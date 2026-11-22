@@ -5,7 +5,7 @@ import {
   userMsg,
   validateOutboundPhone,
 } from "@/lib/callErrors";
-import { speechCaptureOverrides } from "@/lib/speechConfig";
+import { speechCaptureOverrides, VOICE_SPEED, VOICE_VERSION } from "@/lib/speechConfig";
 import {
   ENGLISH_END_MESSAGE,
   ENGLISH_FIRST_MESSAGE,
@@ -50,15 +50,16 @@ export async function POST(req: Request) {
           model: {
             provider: "groq",
             model: "llama-3.3-70b-versatile",
-          temperature: 0.55,
-          maxTokens: 140,
-            messages: [{ role: "system", content: ENGLISH_SYSTEM_PROMPT }],
+          temperature: 0.65,
+          maxTokens: 160,
+          messages: [{ role: "system", content: ENGLISH_SYSTEM_PROMPT }],
           },
           voice: {
             provider: "vapi",
             voiceId: "Elliot",
+            version: VOICE_VERSION,
             language: "en",
-            speed: 0.88,
+            speed: VOICE_SPEED,
           },
           ...speech,
         },

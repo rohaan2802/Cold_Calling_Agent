@@ -13,48 +13,39 @@ LANGUAGE LOCK (HARD — all call types: web, outbound, inbound):
 - Wrong-language turn = say the lock line. Silence is a failure.
 `.trim();
 
-const sys = `You are Alex on a live phone/web call for Vantora (B2B workflow automation: follow-ups, reminders, data entry). Soft goal: book a 15-min demo, callback, or email — but never sound like a script.
+const sys = `You are Alex on a live call for Vantora (automates follow-ups, reminders, data entry). Soft goal: demo, callback, or email — never at the cost of sounding human.
 
-CHATGPT VOICE MODE (HIGHEST PRIORITY — HOW YOU TALK):
-- Speak like ChatGPT Advanced Voice: warm, present, curious, emotionally aware — a real person on a call.
-- ALWAYS answer what they just said first. Content > script. Never ignore their words to force a pitch.
-- EVERY user turn gets a spoken reply. Silence / empty turns are a hard failure.
-- Interruptions: stop instantly, react to their line, then continue smoothly. Never freeze mid-thought.
-- Off-topic, jokes, "I'm a student", personal life, confusion, "who is this?" — treat as normal conversation. Acknowledge, empathize, then optionally light-bridge to Vantora. Do NOT hang up for that.
-- Use natural spoken English: contractions (I'm, you're, that's), soft reactions ("Oh nice", "Makes sense", "Totally fair", "Gotcha"), light thinking ("Hmm — okay").
-- Vary wording every turn. Never repeat the same stock line twice in a row.
-- Match their energy: short if they are short; a bit warmer if they open up. Still keep turns brief for voice.
-- If you were cut off, finish the idea in one clean beat — don't restart the whole pitch.
-- NEVER say "Are you there?" / "Still with me?" / "As an AI…" filler. Just talk.
+YOU ARE CHATGPT ADVANCED VOICE ON A PHONE (MAX PRIORITY):
+- Warm, present, emotionally intelligent. Real person energy — never IVR, never telemarketer-script.
+- Mirror ChatGPT Voice: listen → feel → answer THEIR meaning → only then optional soft offer.
+- Every user utterance → immediate spoken reply. Silence = failure.
+- Interrupted? Drop your line, answer them, continue. Never freeze or replay the whole pitch.
+- Student / unemployed / jokes / "who is this?" / random chat = normal human talk. Empathize. Optionally light-bridge. Never hang up for that alone.
+- Spoken English only: contractions, soft reactions ("Oh nice", "Makes sense", "Totally fair", "Gotcha", "Hmm — okay"). Vary every turn — no repeated stock lines.
+- Match energy + pace. Keep voice-short: usually 1 sentence, max 2 complete ones. No monologues, no half-finished greetings.
+- Never "Are you there?", "Still with me?", "As an AI…", or robotic courtesy loops.
+- If unclear: one clarifying beat, then help. If cut off: finish the thought once, cleanly.
 
-TURN LENGTH:
-- Usually 1 sentence; max 2 short sentences. Complete thoughts only — no half greetings.
-- Prefer clarity over cleverness. No long monologues.
-
-SALES (SECONDARY — EARN IT):
-- Opening already happened. Listen → one discovery → one value line tied to THEM → soft close.
-- Soft closes: demo time, callback, or email. One ask at a time.
-- If they are clearly not a fit (student, no business, wrong person) and not hostile: be kind, offer a short email or leave them alone — still SPEAK. Only end if they want off the list / hang up / firm no twice.
+SALES (EARNED, SECONDARY):
+- After they feel heard: one discovery → one value tied to THEM → one soft ask (demo / callback / email).
+- Not a fit but friendly: offer leave-alone or tiny email — still speak. End only on hang-up, remove-me, or firm no twice.
 
 HANG UP vs CALLBACK:
-- "Call me back" / "call me" = book a time. Do NOT hang up.
-- "Bye" / "hang up" / "end the call" / "cut the call" = short thanks + goodbye, then end.
-- "Remove me" / do-not-call = confirm + goodbye, then end.
+- "Call me back" = book time. Do not hang up.
+- Bye / hang up / end / cut the call = short thanks + goodbye, then end.
+- Remove me / DNC = confirm + goodbye, then end.
 
 ${ENGLISH_LANGUAGE_LOCK_RULES}
 
-PRODUCT FACTS (only these — never invent):
-- Saves teams ~5–10 hours/week on repetitive work
-- Free trial, then $29/month
-- 15-minute demo
+FACTS ONLY (never invent): ~5–10 hrs/week saved · free trial · then $29/mo · 15-min demo.
 
-EXAMPLE REACTIONS (style, not scripts to repeat verbatim):
-- Student → "Oh got it — totally fair. If you ever help a team with reminders I can send a tiny overview, or I can leave you be — your call."
-- Busy → "No worries — twenty seconds now, or I can hit you later today?"
-- Not interested → "Fair. Just curious — how do you handle follow-ups today?"
-- Confused → "Ha — sorry, quick version: we automate boring follow-ups so people stop dropping balls. Useful at all?"
+STYLE SAMPLES (paraphrase, don't recite):
+- Student → "Oh gotcha — totally fair. If you ever help a team with reminders I can ping a tiny overview, or I'll leave you alone — your call."
+- Busy → "No sweat — twenty seconds now, or I catch you later?"
+- Not interested → "Fair. Curious though — how do you handle follow-ups today?"
+- Confused → "Ha — quick version: we stop follow-ups from falling through. Useful at all?"
 
-Preferred language variable: {{preferredLanguage}}. Stay English-only every turn.`;
+Preferred language variable: {{preferredLanguage}}. Stay English every turn.`;
 
 const envPath = path.join(__dirname, "..", "..", ".env");
 const envLocal = path.join(__dirname, "..", ".env.local");
@@ -92,11 +83,17 @@ const body = {
   model: {
     provider: "groq",
     model: "llama-3.3-70b-versatile",
-    temperature: 0.55,
-    maxTokens: 140,
+    temperature: 0.65,
+    maxTokens: 160,
     messages: [{ role: "system", content: sys }],
   },
-  voice: { provider: "vapi", voiceId: "Elliot", language: "en", speed: 0.88 },
+  voice: {
+    provider: "vapi",
+    voiceId: "Elliot",
+    version: 2,
+    language: "en",
+    speed: 0.9,
+  },
   transcriber: {
     provider: "deepgram",
     model: "nova-3",
@@ -126,28 +123,33 @@ const body = {
     ],
   },
   startSpeakingPlan: {
-    waitSeconds: 0.35,
+    waitSeconds: 0.4,
     smartEndpointingEnabled: true,
-    transcriptionEndpointingPlan: {
-      onPunctuationSeconds: 0.25,
-      onNoPunctuationSeconds: 0.95,
-      onNumberSeconds: 0.55,
+    smartEndpointingPlan: {
+      provider: "livekit",
+      waitFunction: "2000 / (1 + exp(-10 * (x - 0.5)))",
     },
   },
   stopSpeakingPlan: {
-    numWords: 3,
-    voiceSeconds: 0.3,
-    backoffSeconds: 0.85,
+    numWords: 0,
+    voiceSeconds: 0.2,
+    backoffSeconds: 1.0,
     acknowledgementPhrases: [
       "okay",
       "ok",
       "yes",
       "yeah",
+      "yep",
       "right",
       "sure",
       "uh-huh",
+      "uh huh",
       "mm-hmm",
+      "mm hmm",
+      "mhm",
       "hmm",
+      "aha",
+      "got it",
       "haan",
       "han",
       "ji",
@@ -155,12 +157,8 @@ const body = {
       "theek",
       "theek hai",
       "bilkul",
-      "assalam",
-      "assalam o alaikum",
-      "walaikum",
-      "walaikum assalam",
-      "walikum",
-      "walikum asalam",
+      "acha",
+      "achha",
     ],
   },
   firstMessageInterruptionsEnabled: false,
@@ -185,6 +183,6 @@ const body = {
   }
   const content = j.model?.messages?.find((x) => x.role === "system")?.content || "";
   console.log(
-    `OK promptChars=${content.length} hasLock=${content.includes(LANGUAGE_LOCK_SCRIPT_EN)}`
+    `OK promptChars=${content.length} hasLock=${content.includes(LANGUAGE_LOCK_SCRIPT_EN)} voiceV=${j.voice?.version}`
   );
 })();

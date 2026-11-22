@@ -16,6 +16,7 @@ import {
 } from "@/lib/urduSystemPrompt";
 import {
   VOICE_SPEED,
+  VOICE_VERSION,
   endCallPhrasesFor,
   isAssistantGoodbye,
   isUserHangupRequest,
@@ -47,7 +48,7 @@ const CALL_AGENT_NOTES = [
 
 const OPENINGS: Record<Lang, string> = {
   english: ENGLISH_FIRST_MESSAGE,
-  urdu: "Assalam o alaikum — Alex Vantora se. Follow-ups asaan banate hain. Tees seconds mil sakte hain?",
+  urdu: "Assalam o alaikum — Alex, Vantora se. Follow-ups asaan banate hain. Tees seconds mil sakte hain?",
 };
 
 const END_MSG: Record<Lang, string> = {
@@ -340,13 +341,14 @@ export default function TalkToAgent() {
         model: {
           provider: "groq",
           model: "llama-3.3-70b-versatile",
-          temperature: 0.55,
-          maxTokens: 140,
+          temperature: 0.65,
+          maxTokens: 160,
           messages: [{ role: "system", content: URDU_SYSTEM_PROMPT }],
         },
         voice: {
           provider: "vapi",
           voiceId: "Elliot",
+          version: VOICE_VERSION,
           language: "en",
           speed: VOICE_SPEED,
         },
@@ -362,13 +364,14 @@ export default function TalkToAgent() {
       model: {
         provider: "groq",
         model: "llama-3.3-70b-versatile",
-        temperature: 0.55,
-        maxTokens: 140,
+        temperature: 0.65,
+        maxTokens: 160,
         messages: [{ role: "system", content: ENGLISH_SYSTEM_PROMPT }],
       },
       voice: {
         provider: "vapi",
         voiceId: "Elliot",
+        version: VOICE_VERSION,
         language: "en",
         speed: VOICE_SPEED,
       },

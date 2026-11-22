@@ -3,8 +3,11 @@
  * Deepgram default endpointing (10ms) misses short / quiet utterances — use ~250.
  */
 
-/** Slightly brisk — still natural on Elliot */
-export const VOICE_SPEED = 0.88;
+/** Natural pace on Elliot V2 — not rushed, not slow */
+export const VOICE_SPEED = 0.9;
+
+/** Elliot V2 = more realistic / human TTS (Vapi Voices V2) */
+export const VOICE_VERSION = 2 as const;
 
 /** Seconds between idle nudge / end steps (VAPI speech.timeout hooks) — keep long so thinking ≠ “gone” */
 export const IDLE_STEP_SECONDS = 25;
@@ -42,36 +45,60 @@ export function deepgramTranscriber(language: "en" | "ur" | "multi") {
   };
 }
 
-/** Fast turn-taking — long waits made Alex feel mute after the user spoke */
-export const startSpeakingPlan = {
-  waitSeconds: 0.35,
-  smartEndpointingEnabled: true,
-  transcriptionEndpointingPlan: {
-    onPunctuationSeconds: 0.25,
-    onNoPunctuationSeconds: 0.95,
-    onNumberSeconds: 0.55,
-  },
-};
+/**
+ * English: LiveKit smart endpointing (Vapi’s ChatGPT-like turn detector).
+ * Urdu: transcription endpointing (LiveKit is English-only).
+ */
+export function startSpeakingPlanFor(language: "en" | "ur") {
+  if (language === "en") {
+    return {
+      waitSeconds: 0.4,
+      smartEndpointingEnabled: true,
+      smartEndpointingPlan: {
+        provider: "livekit" as const,
+        // Vapi-recommended sigmoid — natural end-of-turn, not mute gaps
+        waitFunction: "2000 / (1 + exp(-10 * (x - 0.5)))",
+      },
+    };
+  }
+  return {
+    waitSeconds: 0.4,
+    smartEndpointingEnabled: true,
+    transcriptionEndpointingPlan: {
+      onPunctuationSeconds: 0.15,
+      onNoPunctuationSeconds: 1.05,
+      onNumberSeconds: 0.5,
+    },
+  };
+}
+
+/** @deprecated use startSpeakingPlanFor — kept for any old imports */
+export const startSpeakingPlan = startSpeakingPlanFor("en");
 
 /**
- * Natural barge-in: a few real words stop Alex, then he replies quickly.
- * (numWords 7 + backoff 2.2s made interrupts feel like permanent silence.)
- * Opening greeting still protected via firstMessageInterruptionsEnabled: false.
+ * ChatGPT-like barge-in: voice activity can stop Alex; short acks don't steal the turn.
+ * Opening still protected via firstMessageInterruptionsEnabled: false.
  */
 export const stopSpeakingPlan = {
-  numWords: 3,
-  voiceSeconds: 0.3,
-  backoffSeconds: 0.85,
+  numWords: 0,
+  voiceSeconds: 0.2,
+  backoffSeconds: 1.0,
   acknowledgementPhrases: [
     "okay",
     "ok",
     "yes",
     "yeah",
+    "yep",
     "right",
     "sure",
     "uh-huh",
+    "uh huh",
     "mm-hmm",
+    "mm hmm",
+    "mhm",
     "hmm",
+    "aha",
+    "got it",
     "haan",
     "han",
     "ji",
@@ -79,6 +106,8 @@ export const stopSpeakingPlan = {
     "theek",
     "theek hai",
     "bilkul",
+    "acha",
+    "achha",
     "assalam",
     "assalam o alaikum",
     "walaikum",
@@ -309,7 +338,7 @@ export function speechCaptureOverrides(
 
   return {
     transcriber: deepgramTranscriber(language),
-    startSpeakingPlan,
+    startSpeakingPlan: startSpeakingPlanFor(language),
     stopSpeakingPlan,
     backgroundDenoisingEnabled: true,
     /** Never barge into the opening greeting */
