@@ -12,8 +12,9 @@
   --ok: #3ecf8e;
   --shadow: 0 22px 60px rgba(0, 0, 0, 0.45);
   --radius: 18px;
-  --font-display: "Syne", "Segoe UI", sans-serif;
-  --font-body: "Manrope", "Segoe UI", sans-serif;
+  /* One standard readable UI face — no fancy display clipping */
+  --font-display: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, sans-serif;
   --shell-pad: clamp(0.75rem, 3vw, 1.5rem);
   --gap-xs: 0.45rem;
   --gap-sm: 0.7rem;
@@ -100,8 +101,12 @@ body {
   min-height: 100%;
   color: var(--ink);
   font-family: var(--font-body);
-  font-size: clamp(17px, 1.05vw + 15px, 19.5px);
-  line-height: 1.55;
+  font-size: clamp(16px, 0.9vw + 14px, 18px);
+  line-height: 1.6;
+  letter-spacing: 0.01em;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
   background:
     radial-gradient(900px 520px at 8% -8%, rgba(62, 207, 142, 0.16), transparent 55%),
     radial-gradient(800px 480px at 100% 0%, rgba(56, 120, 90, 0.18), transparent 50%),
@@ -160,12 +165,12 @@ main {
 
 .brand {
   font-family: var(--font-display);
-  font-size: 1.45rem;
+  font-size: 1.4rem;
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0;
   padding-left: 0.35rem;
   white-space: nowrap;
-  line-height: 1.25;
+  line-height: 1.35;
   overflow: visible;
 }
 
@@ -221,22 +226,21 @@ main {
 
 .hero-brand {
   font-family: var(--font-display);
-  font-size: clamp(2.6rem, 8vw, 5.2rem);
-  line-height: 1.15;
+  font-size: clamp(2.4rem, 7vw, 4.6rem);
+  line-height: 1.2;
   margin: 0.35rem 0 0.7rem;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.01em;
   word-break: break-word;
   overflow: visible;
   padding-block: 0.08em 0.12em;
 }
 
-/* Body font for long headlines — Syne’s tight metrics make g/j look cropped */
 .hero h1 {
   font-family: var(--font-body);
-  font-size: clamp(1.45rem, 3.4vw, 2.2rem);
-  line-height: 1.7;
+  font-size: clamp(1.35rem, 3vw, 2rem);
+  line-height: 1.55;
   margin: 0 0 1rem;
-  letter-spacing: 0;
+  letter-spacing: 0.01em;
   font-weight: 700;
   color: var(--ink);
   max-width: 36ch;
