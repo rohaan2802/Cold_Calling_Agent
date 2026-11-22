@@ -12,7 +12,7 @@ export const VOICE_VERSION = 2 as const;
 /** Seconds between idle nudge / end steps (VAPI speech.timeout hooks) — keep long so thinking ≠ “gone” */
 export const IDLE_STEP_SECONDS = 25;
 
-const KEYWORDS = [
+const KEYWORDS_EN = [
   "Vantora",
   "Vantora:2",
   "Alex",
@@ -32,22 +32,43 @@ const KEYWORDS = [
   "student:1",
 ];
 
+const KEYWORDS_UR = [
+  "Vantora",
+  "Alex",
+  "demo",
+  "email",
+  "callback",
+  "haan",
+  "han",
+  "ji",
+  "jee",
+  "theek",
+  "bilkul",
+  "student",
+  "call",
+  "cut",
+  "busy",
+  "mazrat",
+  "shukriya",
+];
+
 export function deepgramTranscriber(language: "en" | "ur" | "multi") {
+  const isUr = language === "ur";
   return {
     provider: "deepgram" as const,
     model: "nova-3" as const,
     language,
     smartFormat: true,
     numerals: true,
-    confidenceThreshold: 0.22,
-    endpointing: 250,
-    keywords: KEYWORDS,
+    confidenceThreshold: isUr ? 0.15 : 0.22,
+    endpointing: isUr ? 400 : 250,
+    keywords: isUr ? KEYWORDS_UR : KEYWORDS_EN,
   };
 }
 
 /**
- * English: LiveKit smart endpointing (Vapi’s ChatGPT-like turn detector).
- * Urdu: transcription endpointing (LiveKit is English-only).
+ * English: LiveKit smart endpointing (Vapi ChatGPT-like turn detector).
+ * Urdu: transcription only (LiveKit English-only) — faster reply after user stops.
  */
 export function startSpeakingPlanFor(language: "en" | "ur") {
   if (language === "en") {
@@ -56,18 +77,17 @@ export function startSpeakingPlanFor(language: "en" | "ur") {
       smartEndpointingEnabled: true,
       smartEndpointingPlan: {
         provider: "livekit" as const,
-        // Vapi-recommended sigmoid — natural end-of-turn, not mute gaps
         waitFunction: "2000 / (1 + exp(-10 * (x - 0.5)))",
       },
     };
   }
   return {
-    waitSeconds: 0.4,
-    smartEndpointingEnabled: true,
+    waitSeconds: 0.35,
+    smartEndpointingEnabled: false,
     transcriptionEndpointingPlan: {
-      onPunctuationSeconds: 0.15,
-      onNoPunctuationSeconds: 1.05,
-      onNumberSeconds: 0.5,
+      onPunctuationSeconds: 0.2,
+      onNoPunctuationSeconds: 0.85,
+      onNumberSeconds: 0.45,
     },
   };
 }
@@ -75,47 +95,61 @@ export function startSpeakingPlanFor(language: "en" | "ur") {
 /** @deprecated use startSpeakingPlanFor — kept for any old imports */
 export const startSpeakingPlan = startSpeakingPlanFor("en");
 
+const ACK_PHRASES = [
+  "okay",
+  "ok",
+  "yes",
+  "yeah",
+  "yep",
+  "right",
+  "sure",
+  "uh-huh",
+  "uh huh",
+  "mm-hmm",
+  "mm hmm",
+  "mhm",
+  "hmm",
+  "aha",
+  "got it",
+  "haan",
+  "han",
+  "ji",
+  "jee",
+  "theek",
+  "theek hai",
+  "bilkul",
+  "acha",
+  "achha",
+  "assalam",
+  "assalam o alaikum",
+  "walaikum",
+  "walaikum assalam",
+  "walikum",
+  "walikum asalam",
+];
+
 /**
- * ChatGPT-like barge-in: voice activity can stop Alex; short acks don't steal the turn.
- * Opening still protected via firstMessageInterruptionsEnabled: false.
+ * EN: aggressive ChatGPT-like barge-in.
+ * UR: require a few real words — false barge-in was freezing Urdu mid-line.
  */
-export const stopSpeakingPlan = {
-  numWords: 0,
-  voiceSeconds: 0.2,
-  backoffSeconds: 1.0,
-  acknowledgementPhrases: [
-    "okay",
-    "ok",
-    "yes",
-    "yeah",
-    "yep",
-    "right",
-    "sure",
-    "uh-huh",
-    "uh huh",
-    "mm-hmm",
-    "mm hmm",
-    "mhm",
-    "hmm",
-    "aha",
-    "got it",
-    "haan",
-    "han",
-    "ji",
-    "jee",
-    "theek",
-    "theek hai",
-    "bilkul",
-    "acha",
-    "achha",
-    "assalam",
-    "assalam o alaikum",
-    "walaikum",
-    "walaikum assalam",
-    "walikum",
-    "walikum asalam",
-  ],
-};
+export function stopSpeakingPlanFor(language: "en" | "ur") {
+  if (language === "en") {
+    return {
+      numWords: 0,
+      voiceSeconds: 0.2,
+      backoffSeconds: 1.0,
+      acknowledgementPhrases: ACK_PHRASES,
+    };
+  }
+  return {
+    numWords: 3,
+    voiceSeconds: 0.35,
+    backoffSeconds: 0.75,
+    acknowledgementPhrases: ACK_PHRASES,
+  };
+}
+
+export const stopSpeakingPlan = stopSpeakingPlanFor("en");
 
 export const IDLE_CHECK_1_EN = "Are you there?";
 export const IDLE_CHECK_2_EN = "Still with me?";
@@ -339,7 +373,7 @@ export function speechCaptureOverrides(
   return {
     transcriber: deepgramTranscriber(language),
     startSpeakingPlan: startSpeakingPlanFor(language),
-    stopSpeakingPlan,
+    stopSpeakingPlan: stopSpeakingPlanFor(language),
     backgroundDenoisingEnabled: true,
     /** Never barge into the opening greeting */
     firstMessageInterruptionsEnabled: false,

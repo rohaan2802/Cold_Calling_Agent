@@ -12,6 +12,7 @@ import {
 import {
   ENGLISH_LOCK,
   URDU_LOCK_REINFORCE,
+  URDU_REPLY_NUDGE,
   URDU_SYSTEM_PROMPT,
 } from "@/lib/urduSystemPrompt";
 import {
@@ -153,6 +154,8 @@ export default function TalkToAgent() {
   const callStartedAtRef = useRef<number | null>(null);
   const lockSentRef = useRef(false);
   const firstSpeechDoneRef = useRef(false);
+  const urduReplyWatchRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const urduNudgeCountRef = useRef(0);
 
   const publicKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || "";
   const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || "";
@@ -227,6 +230,35 @@ export default function TalkToAgent() {
       clearTimeout(idleTimerRef.current);
       idleTimerRef.current = null;
     }
+  }
+
+  function clearUrduReplyWatch() {
+    if (urduReplyWatchRef.current) {
+      clearTimeout(urduReplyWatchRef.current);
+      urduReplyWatchRef.current = null;
+    }
+  }
+
+  /** If Urdu model goes mute after user speech, nudge once (system msg — not say-hook). */
+  function armUrduReplyWatch() {
+    clearUrduReplyWatch();
+    if (langRef.current !== "urdu") return;
+    if (endingRef.current || !startedRef.current) return;
+    urduReplyWatchRef.current = setTimeout(() => {
+      urduReplyWatchRef.current = null;
+      const vapi = vapiRef.current;
+      if (!vapi || endingRef.current || speakingRef.current) return;
+      if (urduNudgeCountRef.current >= 3) return;
+      urduNudgeCountRef.current += 1;
+      try {
+        vapi.send({
+          type: "add-message",
+          message: { role: "system", content: URDU_REPLY_NUDGE },
+        });
+      } catch {
+        /* ignore */
+      }
+    }, 2800);
   }
 
   function clearHangupDelay() {
@@ -341,8 +373,9 @@ export default function TalkToAgent() {
         model: {
           provider: "groq",
           model: "llama-3.3-70b-versatile",
-          temperature: 0.65,
-          maxTokens: 160,
+          // Slightly lower than EN — Urdu silence often came from over-creative empty turns
+          temperature: 0.48,
+          maxTokens: 180,
           messages: [{ role: "system", content: URDU_SYSTEM_PROMPT }],
         },
         voice: {
@@ -448,6 +481,7 @@ export default function TalkToAgent() {
       speakingRef.current = true;
       setSpeaking(true);
       clearIdleTimer();
+      clearUrduReplyWatch();
       maxVapiVolume(vapi);
     });
 
@@ -483,6 +517,8 @@ export default function TalkToAgent() {
       pendingEndAfterSpeechRef.current = false;
       lockSentRef.current = false;
       firstSpeechDoneRef.current = false;
+      urduNudgeCountRef.current = 0;
+      clearUrduReplyWatch();
       resetIdleSteps();
       clearHangupDelay();
       setConnecting(false);
@@ -515,7 +551,11 @@ export default function TalkToAgent() {
             if (last?.role === "You" && isUserHangupRequest(last.text)) {
               forceHangupRef.current();
             }
+            if (last?.role === "You" && langRef.current === "urdu") {
+              armUrduReplyWatch();
+            }
             if (last?.role === "Alex") {
+              clearUrduReplyWatch();
               onAssistantLineRef.current(last.text);
             }
           }
@@ -554,6 +594,8 @@ export default function TalkToAgent() {
 
           if (role === "You") {
             resetIdleSteps();
+            // Urdu mute recovery: if Alex does not start speaking, nudge the model
+            armUrduReplyWatch();
           }
 
           setTranscript((prev) => {
@@ -629,6 +671,7 @@ export default function TalkToAgent() {
       resetIdleSteps();
       clearHangupDelay();
       tearDownVoiceBoost();
+      clearUrduReplyWatch();
       setConnecting(false);
       vapi.stop();
       vapiRef.current = null;
@@ -674,6 +717,8 @@ export default function TalkToAgent() {
       startedRef.current = false;
       lockSentRef.current = false;
       firstSpeechDoneRef.current = false;
+      urduNudgeCountRef.current = 0;
+      clearUrduReplyWatch();
       await startSession(langRef.current);
     } catch (e) {
       startedRef.current = false;
