@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-22T21:21:37.074Z",
+  "updatedAt": "2026-11-22T21:24:08.140Z",
   "calls": [
     {
       "id": "01a20520-3a91-7ddc-89cb-80cfb8acb5aa",
@@ -15,7 +15,7 @@
       "transcript": "Alex: Hi there.\nProspect: Hi.\nAlex: Do you have about 30 seconds for a quick chat?\nProspect: Yeah. Sure.\nAlex: How do you currently handle follow ups and reminders within your team?\nProspect: Actually, I don't have any follow ups. Hello?\nAlex: Are you there?\nProspect: Yes\nAlex: Are you there?\nAlex: Still with me?\nProspect: Yes.\n",
       "summary": "",
       "recordingFile": "audio/01a20520-3a91-7ddc-89cb-80cfb8acb5aa.mp3",
-      "archivedAt": "2026-11-22T21:21:21.068Z",
+      "archivedAt": "2026-11-22T21:23:37.793Z",
       "source": "vapi-sync"
     },
     {
