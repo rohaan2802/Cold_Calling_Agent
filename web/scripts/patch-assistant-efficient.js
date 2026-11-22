@@ -64,6 +64,12 @@ const body = {
     "Hey — Alex from Vantora. We help teams stop drowning in follow-ups. Got a quick thirty seconds?",
   endCallMessage: "Thanks for your time — take care!",
   firstMessageMode: "assistant-speaks-first",
+  // Production webhook — call-end → archive Action (~1 min). Keep in sync with Vercel URL.
+  server: {
+    url: "https://web-rouge-xi-23.vercel.app/api/webhook",
+    timeoutSeconds: 20,
+  },
+  serverMessages: ["end-of-call-report", "status-update"],
   silenceTimeoutSeconds: 300,
   maxDurationSeconds: 360,
   backgroundDenoisingEnabled: true,
