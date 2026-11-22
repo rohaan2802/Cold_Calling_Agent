@@ -107,7 +107,11 @@ export default function CallDetail({ id }: { id: string }) {
             : prev
         );
       }
-      setInfo("Recording renamed. It will show with this name in Call History.");
+      setInfo(
+        data.renamedOnGitHub
+          ? "Recording renamed on GitHub archive. Refresh Call History in ~1 min after deploy."
+          : "Recording renamed. It will show with this name in Call History."
+      );
     } catch (err) {
       setError(friendlyUserError(err));
     } finally {

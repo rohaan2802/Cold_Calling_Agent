@@ -6,8 +6,9 @@ import {
   markPermanentlyDeleted,
   removeArchivedCall,
   renameArchivedCall,
+  type ArchivedCall,
 } from "@/lib/archive";
-import { pushCallDeleteToGitHub } from "@/lib/githubSync";
+import { pushCallDeleteToGitHub, pushCallRenameToGitHub } from "@/lib/githubSync";
 import { includeLiveVapi } from "@/lib/historyMode";
 import {
   buildHiddenCallsCookie,
@@ -17,6 +18,18 @@ import {
 } from "@/lib/vapi";
 
 type Params = { params: Promise<{ id: string }> };
+
+function isReadOnlyFsError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err || "");
+  const code =
+    err && typeof err === "object" && "code" in err
+      ? String((err as { code?: string }).code || "")
+      : "";
+  return (
+    code === "EROFS" ||
+    /EROFS|read-only file system|EACCES|ENOENT/i.test(msg)
+  );
+}
 
 export async function PATCH(req: Request, { params }: Params) {
   try {
@@ -31,13 +44,41 @@ export async function PATCH(req: Request, { params }: Params) {
       return NextResponse.json({ error: "displayName is required" }, { status: 400 });
     }
 
-    const updated = renameArchivedCall(id, displayName);
-    if (!updated) {
-      return NextResponse.json(
-        { error: "Call not in permanent archive yet. Pull latest recordings first, then rename." },
-        { status: 404 }
-      );
+    // Local/dev: write archive on disk when possible
+    let updated: ArchivedCall | null = null;
+    let localFsBlocked = Boolean(process.env.VERCEL);
+    if (!localFsBlocked) {
+      try {
+        updated = renameArchivedCall(id, displayName);
+      } catch (err) {
+        if (isReadOnlyFsError(err)) localFsBlocked = true;
+        else throw err;
+      }
     }
+
+    // Vercel (or read-only FS): rename on GitHub main so history stays permanent
+    if (!updated || localFsBlocked) {
+      const github = await pushCallRenameToGitHub(id, displayName);
+      if (!github.ok || !github.row) {
+        return NextResponse.json(
+          {
+            error:
+              github.detail ||
+              "Could not rename on GitHub. Set GITHUB_TOKEN + GITHUB_REPO, or Pull archive first.",
+          },
+          { status: github.detail?.includes("not in permanent") ? 404 : 500 }
+        );
+      }
+      return NextResponse.json({
+        ok: true,
+        renamedOnGitHub: true,
+        call: archivedToVapiCall(github.row as ArchivedCall),
+        note: "Name saved to GitHub archive. Refresh Call History after deploy (~1 min).",
+      });
+    }
+
+    // Also mirror local rename to GitHub when tokens exist (keeps Vercel in sync)
+    void pushCallRenameToGitHub(id, displayName).catch(() => undefined);
 
     return NextResponse.json({
       ok: true,
@@ -45,7 +86,14 @@ export async function PATCH(req: Request, { params }: Params) {
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json(
+      {
+        error: isReadOnlyFsError(err)
+          ? "Rename needs GitHub sync on live site. Set GITHUB_TOKEN + GITHUB_REPO on Vercel."
+          : message,
+      },
+      { status: 500 }
+    );
   }
 }
 

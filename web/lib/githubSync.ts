@@ -245,6 +245,76 @@ export async function triggerArchiveWorkflow(reason = "end-of-call"): Promise<{
 }
 
 /**
+ * Rename a call label in GitHub archive (Vercel FS is read-only).
+ * Updates index.json displayName + customer.name; audio file id stays the same.
+ */
+export async function pushCallRenameToGitHub(
+  callId: string,
+  displayName: string
+): Promise<{ ok: boolean; detail: string; row?: GitHubArchiveRow }> {
+  const name = displayName.trim().replace(/\s+/g, " ").slice(0, 80);
+  if (!name) return { ok: false, detail: "displayName is required" };
+
+  const parts = repoParts();
+  const t = token();
+  if (!parts || !t) {
+    return { ok: false, detail: "GITHUB_TOKEN / GITHUB_REPO not set" };
+  }
+
+  const { owner, repo } = parts;
+  const indexPath = "web/public/call-archive/index.json";
+  const msg = `chore: rename call ${callId} in archive`;
+
+  try {
+    const indexFile = await getFile(owner, repo, indexPath);
+    if (!indexFile) {
+      return { ok: false, detail: "Archive index not found on GitHub" };
+    }
+
+    let parsed: { updatedAt?: string; calls?: GitHubArchiveRow[] };
+    try {
+      parsed = JSON.parse(indexFile.content);
+    } catch {
+      return { ok: false, detail: "Archive index JSON invalid" };
+    }
+
+    const calls = Array.isArray(parsed?.calls) ? [...parsed.calls] : [];
+    const idx = calls.findIndex((c) => c?.id === callId);
+    if (idx < 0) {
+      return { ok: false, detail: "Call not in permanent archive yet. Pull latest recordings first." };
+    }
+
+    const prev = calls[idx];
+    const next: GitHubArchiveRow = {
+      ...prev,
+      displayName: name,
+      customer: {
+        ...(prev.customer || {}),
+        name,
+        number: prev.customer?.number,
+      },
+    };
+    calls[idx] = next;
+
+    await putFile(
+      owner,
+      repo,
+      indexPath,
+      JSON.stringify({ updatedAt: new Date().toISOString(), calls }, null, 2) + "\n",
+      msg,
+      indexFile.sha
+    );
+
+    return { ok: true, detail: "GitHub archive renamed (Vercel will redeploy)", row: next };
+  } catch (err) {
+    return {
+      ok: false,
+      detail: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+/**
  * Permanently hide a call on GitHub (so Vercel redeploy no longer lists it).
  * Updates deleted.json + index.json; removes audio blobs when present.
  */
