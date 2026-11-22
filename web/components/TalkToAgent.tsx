@@ -15,7 +15,6 @@ import {
   URDU_SYSTEM_PROMPT,
 } from "@/lib/urduSystemPrompt";
 import {
-  IDLE_STEP_SECONDS,
   VOICE_SPEED,
   endCallPhrasesFor,
   isAssistantGoodbye,
@@ -26,7 +25,6 @@ import {
 type TranscriptLine = { role: string; text: string };
 type Lang = "english" | "urdu";
 
-const IDLE_MS = IDLE_STEP_SECONDS * 1000;
 
 const CALL_AGENT_NOTES = [
   {
@@ -38,8 +36,8 @@ const CALL_AGENT_NOTES = [
     body: "Pick English or Urdu before you start. That language stays locked for the whole call.",
   },
   {
-    title: "Hangup & idle",
-    body: "Say goodbye / call cut to end cleanly. If you go quiet, Alex checks in then ends politely.",
+    title: "Hangup",
+    body: "Say goodbye / bye bye / call cut to end cleanly. Short pauses are fine — Alex keeps listening.",
   },
   {
     title: "After the call",
@@ -140,9 +138,6 @@ export default function TalkToAgent() {
   /** Wait until Alex finishes speaking, then start the 2s hangup delay */
   const pendingEndAfterSpeechRef = useRef(false);
   const speakingRef = useRef(false);
-  const boostCtxRef = useRef<AudioContext | null>(null);
-  const boostGainRef = useRef<GainNode | null>(null);
-  const boostHookedPlayerRef = useRef<HTMLAudioElement | null>(null);
   const [ready, setReady] = useState(false);
   const [active, setActive] = useState(false);
   const [speaking, setSpeaking] = useState(false);
@@ -199,8 +194,6 @@ export default function TalkToAgent() {
     return () => clearInterval(t);
   }, [active]);
 
-  const LIVE_VOICE_GAIN = 5.5;
-
   function maxVapiVolume(vapi: Vapi) {
     try {
       vapi.setVolume(1);
@@ -210,25 +203,15 @@ export default function TalkToAgent() {
   }
 
   function tearDownVoiceBoost() {
-    try {
-      boostCtxRef.current?.close();
-    } catch {
-      /* ignore */
-    }
-    boostCtxRef.current = null;
-    boostGainRef.current = null;
-    boostHookedPlayerRef.current = null;
+    /* Web Audio boost removed — it froze mid-call voice */
   }
 
   function amplifyAssistantAudio(player: HTMLAudioElement) {
-    // Native volume only — MediaElementSource/Web Audio boost caused
-    // "transcript updates but Alex voice gone" mid-call freezes.
+    // Native volume only — never Web Audio MediaElementSource (breaks mid-call voice).
     try {
       player.muted = false;
       player.volume = 1;
-      const anyPlayer = player as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> };
       void player.play?.();
-      void anyPlayer;
     } catch {
       /* ignore */
     }
@@ -330,45 +313,17 @@ export default function TalkToAgent() {
   }
 
   /**
-   * Soft backup nudge only — never force hangup on silence (user may be thinking).
-   * Do NOT use vapi.say() (breaks the LLM/voice loop → transcript without audio).
+   * Production: do NOT inject idle system nudges or vapi.say("Are you there?").
+   * Those froze Alex mid-call. Silence is handled by silenceTimeoutSeconds + prompt.
    */
   function armIdleTimer() {
     clearIdleTimer();
-    if (!startedRef.current || endingRef.current) return;
-
-    idleTimerRef.current = setTimeout(() => {
-      const vapi = vapiRef.current;
-      if (!vapi || endingRef.current || !startedRef.current) return;
-
-      const step = idleStepRef.current;
-      if (step >= 2) {
-        // Stay on the line — VAPI silenceTimeoutSeconds is the safety net
-        return;
-      }
-      idleStepRef.current = step + 1;
-      const lang = langRef.current === "urdu" ? "urdu" : "english";
-      const nudge =
-        lang === "urdu"
-          ? "User silent hai. Ek short Urdu line bolo: poochho ke wo line pe hain. English mat bolo. Call mat kaato."
-          : "User has been silent. Ask one short line if they are still there. Stay in English. Do NOT end the call.";
-      try {
-        vapi.send({
-          type: "add-message",
-          message: { role: "system", content: nudge },
-        });
-      } catch {
-        /* ignore */
-      }
-      armIdleTimer();
-    }, Math.max(IDLE_MS * 5, 40000));
   }
 
   function buildOverrides(lang: Lang) {
     const code = lang === "urdu" ? "ur" : "en";
-    // Language-correct idle nudges; never auto-hangup on silence for web calls.
     const speech = speechCaptureOverrides(code, {
-      clientManagedIdle: false,
+      clientManagedIdle: true,
       endOnSilence: false,
     });
 
@@ -438,9 +393,6 @@ export default function TalkToAgent() {
     }
     await vapiRef.current.start(assistantId, buildOverrides(lang) as never);
     maxVapiVolume(vapiRef.current);
-    if (boostGainRef.current) {
-      boostGainRef.current.gain.value = LIVE_VOICE_GAIN;
-    }
   }
 
   useAutoDismiss(error, () => setError(""));
@@ -499,12 +451,6 @@ export default function TalkToAgent() {
       setSpeaking(true);
       clearIdleTimer();
       maxVapiVolume(vapi);
-      if (boostGainRef.current) {
-        boostGainRef.current.gain.value = LIVE_VOICE_GAIN;
-      }
-      if (boostCtxRef.current?.state === "suspended") {
-        void boostCtxRef.current.resume();
-      }
     });
 
     vapi.on("speech-end", () => {
@@ -514,10 +460,6 @@ export default function TalkToAgent() {
         pendingEndAfterSpeechRef.current = false;
         clearHangupDelay();
         armHangupDelay(2000);
-        return;
-      }
-      if (!endingRef.current) {
-        armIdleTimer();
       }
     });
 

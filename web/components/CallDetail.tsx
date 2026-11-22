@@ -192,7 +192,7 @@ export default function CallDetail({ id }: { id: string }) {
             maxLength={80}
             value={nameDraft}
             onChange={(e) => setNameDraft(e.target.value)}
-            placeholder="e.g. Acme callback — Thu"
+            placeholder="Acme callback — Thu"
             disabled={renaming}
           />
           <button type="submit" className="ghost-btn" disabled={renaming || !nameDraft.trim()}>

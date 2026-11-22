@@ -467,8 +467,11 @@ export default function CallHistory() {
                   </span>
                 </Link>
                 <div className="call-actions">
-                  <span className={`badge sample ${isDemoCall(call) ? "" : "badge-slot"}`}>
-                    {isDemoCall(call) ? "Demo" : ""}
+                  <span
+                    className={`badge sample${isDemoCall(call) ? "" : " badge-slot"}`}
+                    aria-hidden={!isDemoCall(call)}
+                  >
+                    Demo
                   </span>
                   <span className="badge badge-outcome">{getOutcome(call)}</span>
                   <button

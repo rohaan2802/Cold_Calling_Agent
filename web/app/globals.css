@@ -735,12 +735,31 @@ main {
 }
 
 .call-actions {
+  /* Fixed 3 columns: Demo | Outcome | Delete — stacked under each other every row */
   display: grid;
-  grid-template-columns: 4.6rem minmax(8.2rem, max-content) auto;
+  grid-template-columns: 4.75rem minmax(5.75rem, 7.25rem) 4.75rem;
   align-items: center;
-  column-gap: var(--gap-sm);
+  gap: 0.55rem;
   flex-shrink: 0;
-  justify-items: stretch;
+  width: 16.8rem;
+  max-width: 100%;
+}
+
+.call-actions > .badge,
+.call-actions > .danger-btn.sm {
+  width: 100%;
+  max-width: 100%;
+  height: 2.1rem;
+  min-height: 2.1rem;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin: 0;
 }
 
 .detail-top {
@@ -789,7 +808,7 @@ main {
 .badge {
   font-size: 0.84rem;
   font-weight: 700;
-  padding: 0.4rem 0.7rem;
+  padding: 0.4rem 0.85rem;
   border-radius: 999px;
   background: var(--accent-soft);
   color: var(--accent);
@@ -800,29 +819,31 @@ main {
   justify-content: center;
   min-height: 2rem;
   box-sizing: border-box;
+  line-height: 1.15;
+  max-width: 100%;
 }
 
 .badge.sample {
   background: rgba(255, 139, 106, 0.16);
   color: var(--warn);
-  width: 100%;
 }
 
 .badge.sample.badge-slot {
   visibility: hidden;
   pointer-events: none;
+  user-select: none;
 }
 
 .badge-outcome {
-  width: 100%;
   justify-content: center;
   text-align: center;
-  padding-left: 0.75rem;
-  padding-right: 0.75rem;
+  padding: 0.4rem 0.95rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .badge.source-badge {
-  width: 100%;
+  width: auto;
   font-size: 0.78rem;
   letter-spacing: 0.02em;
 }
@@ -970,22 +991,33 @@ main {
 .rename-row {
   display: flex;
   gap: var(--gap-sm);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  min-width: 0;
 }
 
 .rename-row input {
-  flex: 1 1 220px;
+  flex: 1 1 auto;
   min-width: 0;
+  width: 100%;
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 0.7rem 0.85rem;
   font: inherit;
   background: var(--panel-2);
   color: var(--ink);
+  /* Long placeholder stays readable; user can scroll the field */
+  overflow-x: auto;
+}
+
+.rename-row input::placeholder {
+  color: #6d7d74;
+  opacity: 1;
 }
 
 .rename-row .ghost-btn {
   flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .summary-card h3 {
@@ -1218,8 +1250,12 @@ main {
   }
 }
 
+.transcript-block {
+  min-width: 0;
+}
+
 .transcript-block pre {
-  white-space: pre-wrap;
+  white-space: pre;
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -1229,9 +1265,20 @@ main {
   line-height: 1.55;
   max-height: min(420px, 55vh);
   overflow: auto;
+  overflow-x: auto;
+  overflow-y: auto;
   color: var(--ink);
   -webkit-overflow-scrolling: touch;
   margin: var(--gap-sm) 0 0;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
+/* Shared: long IDs / one-line fields on narrow screens */
+.scroll-x {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  max-width: 100%;
 }
 
 .site-footer {
@@ -1359,7 +1406,94 @@ main {
 
   .call-actions {
     width: 100%;
-    grid-template-columns: 4.2rem minmax(0, 1fr) auto;
+    max-width: 100%;
+    gap: 0.4rem;
+    overflow: hidden;
+    padding-bottom: 0;
+    grid-template-columns: 1fr 1.25fr 1fr;
+  }
+
+  .call-actions > .badge,
+  .call-actions > .danger-btn.sm {
+    width: 100%;
+    min-width: 0;
+    height: 2.15rem;
+    min-height: 2.15rem;
+    padding: 0 0.4rem;
+    font-size: clamp(0.62rem, 2.6vw, 0.78rem);
+    font-weight: 700;
+    border-radius: 999px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .badge {
+    font-size: clamp(0.62rem, 2.6vw, 0.78rem);
+    padding: 0 0.4rem;
+    min-height: 2.15rem;
+  }
+
+  .badge-outcome {
+    padding: 0 0.4rem;
+  }
+
+  .danger-btn.sm {
+    padding: 0 0.4rem;
+    font-size: clamp(0.62rem, 2.6vw, 0.78rem);
+  }
+
+  .rename-row {
+    flex-direction: column;
+    flex-wrap: wrap;
+  }
+
+  .rename-row input {
+    width: 100%;
+    font-size: 1rem; /* avoid iOS zoom; keeps placeholder fully visible */
+  }
+
+  .rename-row .ghost-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .live-transcript {
+    overflow-x: auto;
+  }
+
+  .live-transcript p {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+
+  .meta-list dd {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .call-row .meta {
+    overflow-x: auto;
+    white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .dialer-row {
+    flex-wrap: wrap;
+  }
+
+  .dialer-row input {
+    flex: 1 1 100%;
+  }
+
+  .dialer-row button {
+    width: 100%;
+  }
+
+  .ok-box,
+  .error-box {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
   .detail-top {

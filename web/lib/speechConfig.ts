@@ -6,8 +6,8 @@
 /** Casual pace — not rushed, not slow (1.0 feels fast on Elliot) */
 export const VOICE_SPEED = 0.8;
 
-/** Seconds between idle nudge / end steps (VAPI speech.timeout hooks) */
-export const IDLE_STEP_SECONDS = 8;
+/** Seconds between idle nudge / end steps (VAPI speech.timeout hooks) — keep long so thinking ≠ “gone” */
+export const IDLE_STEP_SECONDS = 25;
 
 const KEYWORDS = [
   "Vantora",
@@ -237,6 +237,8 @@ export function idlePresenceHooks(language: "en" | "ur", opts?: { endOnSilence?:
   const { check1, check2, end } = idleLines(language);
   const endOnSilence = opts?.endOnSilence !== false;
 
+  // Prefer model response over exact `say` when possible — exact say can stall the LLM loop.
+  // Timeouts are long so a pause while thinking does not fire “Are you there?” mid-answer.
   const hooks = [
     {
       on: "customer.speech.timeout" as const,
@@ -297,6 +299,10 @@ export function speechCaptureOverrides(
 ) {
   const clientIdle = Boolean(opts.clientManagedIdle);
   const endOnSilence = opts.endOnSilence !== false;
+  // Exact `say` idle hooks ("Are you there?") have repeatedly frozen the LLM/voice
+  // loop in production. Never attach them unless we intentionally hang up on silence
+  // (phone-only rare path). Web + normal outbound: empty hooks.
+  const useSayIdleHooks = !clientIdle && endOnSilence;
 
   return {
     transcriber: deepgramTranscriber(language),
@@ -305,11 +311,9 @@ export function speechCaptureOverrides(
     backgroundDenoisingEnabled: true,
     /** Never barge into the opening greeting */
     firstMessageInterruptionsEnabled: false,
-    // Long pause OK — do not kill web calls for thinking time
-    silenceTimeoutSeconds: clientIdle || !endOnSilence ? 300 : 60,
-    // Prefer VAPI speech.timeout hooks (keeps LLM turn-taking alive).
-    // clientManagedIdle=true clears hooks when the browser drives idle itself.
-    hooks: clientIdle ? [] : idlePresenceHooks(language, { endOnSilence }),
+    // Long pause OK — do not kill calls for thinking time
+    silenceTimeoutSeconds: clientIdle || !endOnSilence ? 300 : 90,
+    hooks: useSayIdleHooks ? idlePresenceHooks(language, { endOnSilence: true }) : [],
     clientMessages: ["transcript", "conversation-update", "speech-update"] as string[],
   };
 }

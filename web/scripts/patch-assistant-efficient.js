@@ -22,6 +22,8 @@ STYLE (HARD):
 - Sound human: "Got it", "Sure", "Absolutely" ok — no long monologues.
 - If cut off mid-line, continue on the next turn — never freeze.
 - NEVER stay silent after the user speaks. Every user turn needs your spoken reply.
+- NEVER ask "Are you there?" / "Still with me?" — wait through pauses; when they speak, answer their content.
+- If they answer discovery (even "I don't have follow-ups" / "Hello?"), respond to THAT — never ignore with a presence check.
 - NEVER end the call only because the user paused. Keep listening. Only end on explicit hang-up, firm "no" twice, or "remove me".
 - "bye" / "bye bye" / "not a businessman" / wrong person → speak a short thanks/goodbye, then end.
 
@@ -75,11 +77,11 @@ const body = {
     "Hi there! This is Alex calling from Vantora. We help businesses automate repetitive workflows so teams can save hours every week. Do you have thirty seconds? I promise to keep it brief.",
   endCallMessage: "Thanks for your time today. Have a great day!",
   firstMessageMode: "assistant-speaks-first",
-  silenceTimeoutSeconds: 180,
-  maxDurationSeconds: 240,
+  // Long silence OK — never use customer.speech.timeout `say` hooks (they freeze voice).
+  silenceTimeoutSeconds: 300,
+  maxDurationSeconds: 360,
   backgroundDenoisingEnabled: true,
   backgroundSound: "off",
-  /** Idle EN/UR lines are applied per-call via web client or outbound overrides — not here */
   hooks: [],
   endCallPhrases: [
     "goodbye",
@@ -94,7 +96,7 @@ const body = {
   model: {
     provider: "groq",
     model: "llama-3.3-70b-versatile",
-    temperature: 0.4,
+    temperature: 0.35,
     maxTokens: 110,
     messages: [{ role: "system", content: sys }],
   },
@@ -127,18 +129,42 @@ const body = {
     ],
   },
   startSpeakingPlan: {
-    waitSeconds: 0.85,
+    waitSeconds: 0.7,
     smartEndpointingEnabled: true,
     transcriptionEndpointingPlan: {
-      onPunctuationSeconds: 0.35,
-      onNoPunctuationSeconds: 1.6,
-      onNumberSeconds: 0.7,
+      onPunctuationSeconds: 0.4,
+      onNoPunctuationSeconds: 1.8,
+      onNumberSeconds: 0.8,
     },
   },
   stopSpeakingPlan: {
     numWords: 7,
     voiceSeconds: 0.5,
     backoffSeconds: 2.2,
+    acknowledgementPhrases: [
+      "okay",
+      "ok",
+      "yes",
+      "yeah",
+      "right",
+      "sure",
+      "uh-huh",
+      "mm-hmm",
+      "hmm",
+      "haan",
+      "han",
+      "ji",
+      "jee",
+      "theek",
+      "theek hai",
+      "bilkul",
+      "assalam",
+      "assalam o alaikum",
+      "walaikum",
+      "walaikum assalam",
+      "walikum",
+      "walikum asalam",
+    ],
   },
   firstMessageInterruptionsEnabled: false,
 };

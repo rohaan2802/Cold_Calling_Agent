@@ -34,7 +34,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: userMsg("configMissing") }, { status: 500 });
     }
 
-    const speech = speechCaptureOverrides("en");
+    // Longer idle timeouts; still no silence hangup from short pauses
+    const speech = speechCaptureOverrides("en", { endOnSilence: false });
 
     const res = await vapiFetch("/call", {
       method: "POST",
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
           model: {
             provider: "groq",
             model: "llama-3.3-70b-versatile",
-            temperature: 0.4,
+            temperature: 0.35,
             maxTokens: 110,
             messages: [{ role: "system", content: ENGLISH_SYSTEM_PROMPT }],
           },
