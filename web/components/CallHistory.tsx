@@ -173,12 +173,25 @@ export default function CallHistory() {
         );
         return;
       }
-      setInfo(
-        data.mode === "github-dispatch"
-          ? "Pull started on GitHub. Live site updates after Action + deploy (~1–3 min)."
-          : `Pulled latest into archive (${typeof data.total === "number" ? data.total : "ok"} call(s)). Demo samples were left untouched.`
-      );
-      await load(true);
+      if (data.mode === "github-dispatch") {
+        setInfo(
+          "Pull started on GitHub. New calls already show from VAPI; after Action + Vercel deploy they switch to permanent archive (~1–3 min)."
+        );
+        await load(true);
+        // Soft-poll while Action → deploy lands archive (hybrid stays on VAPI until then)
+        for (const waitMs of [20000, 40000, 60000]) {
+          await new Promise((r) => setTimeout(r, waitMs));
+          await load(true);
+        }
+        setInfo(
+          "Pull finished checking. If a row still plays from VAPI only, wait for the green Vercel deploy then Refresh."
+        );
+      } else {
+        setInfo(
+          `Pulled latest into archive (${typeof data.total === "number" ? data.total : "ok"} call(s)). Same id now prefers archive audio.`
+        );
+        await load(true);
+      }
     } catch (err) {
       setError(friendlyUserError(err));
     } finally {

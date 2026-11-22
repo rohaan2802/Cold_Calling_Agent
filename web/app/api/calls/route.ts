@@ -4,6 +4,7 @@ import {
   mergeCallsPreferArchive,
   readDeletedIds,
 } from "@/lib/archive";
+import { includeLiveVapi } from "@/lib/historyMode";
 import {
   parseHiddenCallIds,
   shouldListInHistory,
@@ -57,12 +58,10 @@ export async function GET(req: Request) {
     const deleted = readDeletedIds();
     const archived = listArchivedAsVapiCalls(hidden);
 
-    // Default: GitHub/archive files ONLY (no VAPI list = no 14-day expiry / no duplicates)
-    // Set HISTORY_INCLUDE_VAPI=1 only if you want live VAPI rows merged in.
-    const includeVapi = process.env.HISTORY_INCLUDE_VAPI === "1";
-
+    // Hybrid (default): live VAPI now + archive preferred on same id when present.
+    // Opt out with HISTORY_INCLUDE_VAPI=0 (archive-only).
     let live: VapiCall[] = [];
-    if (includeVapi) {
+    if (includeLiveVapi()) {
       try {
         live = await fetchRecordedCalls(hidden, deleted);
       } catch (err) {
@@ -74,7 +73,7 @@ export async function GET(req: Request) {
 
     return NextResponse.json(calls, {
       headers: {
-        "Cache-Control": "private, max-age=8, stale-while-revalidate=30",
+        "Cache-Control": "private, max-age=3, stale-while-revalidate=15",
       },
     });
   } catch (err) {

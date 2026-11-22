@@ -8,6 +8,7 @@ import {
   renameArchivedCall,
 } from "@/lib/archive";
 import { pushCallDeleteToGitHub } from "@/lib/githubSync";
+import { includeLiveVapi } from "@/lib/historyMode";
 import {
   buildHiddenCallsCookie,
   isDeletedCall,
@@ -64,8 +65,8 @@ export async function GET(req: Request, { params }: Params) {
       return NextResponse.json(archivedToVapiCall(archived));
     }
 
-    // Live VAPI detail only if explicitly allowed (demo mode uses archive only)
-    if (process.env.HISTORY_INCLUDE_VAPI === "1") {
+    // Hybrid: archive already returned above; otherwise live VAPI (unless archive-only)
+    if (includeLiveVapi()) {
       const res = await vapiFetch(`/call/${id}`);
       const data = await res.json();
       if (!res.ok) {

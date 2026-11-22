@@ -1,6 +1,7 @@
 import fs from "fs";
 import { NextResponse } from "next/server";
 import { findArchiveAudioFile, findArchivedCall } from "@/lib/archive";
+import { includeLiveVapi } from "@/lib/historyMode";
 import { isDeletedCall, vapiFetch } from "@/lib/vapi";
 
 type Params = { params: Promise<{ id: string }> };
@@ -69,12 +70,12 @@ export async function GET(req: Request, { params }: Params) {
       return NextResponse.redirect(new URL(url, req.url), 302);
     }
 
-    // Archive-only history: do not wait on slow VAPI for missing audio
-    if (process.env.HISTORY_INCLUDE_VAPI !== "1") {
+    // Archive-only mode: do not fall back to expiring VAPI audio
+    if (!includeLiveVapi()) {
       return NextResponse.json(
         {
           error:
-            "Recording not in permanent archive. Run: npm run archive:recordings (or set HISTORY_INCLUDE_VAPI=1).",
+            "Recording not in permanent archive yet. Pull latest recordings, or unset HISTORY_INCLUDE_VAPI=0 for hybrid live+archive.",
         },
         { status: 404 }
       );

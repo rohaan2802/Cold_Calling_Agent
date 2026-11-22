@@ -37,9 +37,10 @@ const optionalLines = [];
 if (env.ARCHIVE_SYNC_SECRET) {
   optionalLines.push(`ARCHIVE_SYNC_SECRET=${env.ARCHIVE_SYNC_SECRET}`);
 }
-if (env.HISTORY_INCLUDE_VAPI) {
-  optionalLines.push(`HISTORY_INCLUDE_VAPI=${env.HISTORY_INCLUDE_VAPI}`);
-}
+// Default hybrid ON unless root .env sets HISTORY_INCLUDE_VAPI=0
+optionalLines.push(
+  `HISTORY_INCLUDE_VAPI=${env.HISTORY_INCLUDE_VAPI === "0" ? "0" : "1"}`
+);
 if (env.ARCHIVE_MAX_PAGES) {
   optionalLines.push(`ARCHIVE_MAX_PAGES=${env.ARCHIVE_MAX_PAGES}`);
 }
@@ -69,8 +70,8 @@ if (!env.VAPI_PHONE_NUMBER_ID) {
 } else {
   console.log("Phone number ID synced.\n");
 }
-if (env.HISTORY_INCLUDE_VAPI === "1") {
-  console.log("HISTORY_INCLUDE_VAPI=1 — call history will merge live VAPI + archive.\n");
+if (env.HISTORY_INCLUDE_VAPI === "0") {
+  console.log("HISTORY_INCLUDE_VAPI=0 — archive-only history.\n");
 } else {
-  console.log("Call history uses permanent archive only (set HISTORY_INCLUDE_VAPI=1 to merge live VAPI).\n");
+  console.log("HISTORY_INCLUDE_VAPI=1 — hybrid: live VAPI now, archive preferred when present.\n");
 }

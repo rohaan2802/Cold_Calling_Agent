@@ -2,6 +2,7 @@ name: Archive recordings (free forever)
 
 # VAPI free retention ~14 days — cron kept as late as safely possible (weekly).
 # Near-immediate archive still happens via webhook / Pull button (repository_dispatch).
+# When this job pushes to main, Vercel auto-redeploys (Root Directory = web) so archive audio goes live.
 on:
   schedule:
     # Once a week: Sunday 03:15 UTC (~08:15 PKT). Max practical delay before 14-day VAPI expiry.
