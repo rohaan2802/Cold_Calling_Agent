@@ -476,8 +476,8 @@ Sync local web: `npm run sync:web-env`
 ### Local run (Windows)
 
 ```powershell
-cd "C:\Users\CodeTech\Desktop\Cold-Calling AI Voice Agent"
-.\scripts\run-dev.cmd
+cd "C:\Users\CodeTech\Desktop\Cold_Calling_Agent"
+.\RUN.cmd
 ```
 
 Or `npm run dev` — picks a free port from 3000 and opens Chrome.
@@ -781,7 +781,7 @@ cd web && npm install && npm run dev
 ## Folder tree (source)
 
 ```
-Cold-Calling AI Voice Agent/
+Cold_Calling_Agent/
 ├── README.md
 ├── .env.example
 ├── package.json
