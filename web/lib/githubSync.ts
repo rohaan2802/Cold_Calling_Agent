@@ -165,10 +165,18 @@ export async function fetchArchiveIndexFromGitHub(): Promise<{
   }
 }
 
+function audioContentType(filePath: string): string {
+  const lower = filePath.toLowerCase();
+  if (lower.endsWith(".wav")) return "audio/wav";
+  if (lower.endsWith(".ogg")) return "audio/ogg";
+  if (lower.endsWith(".webm")) return "audio/webm";
+  return "audio/mpeg";
+}
+
 /** Stream an archived audio blob from GitHub (private-repo safe). */
 export async function fetchArchiveAudioFromGitHub(
   recordingFile: string
-): Promise<{ body: ArrayBuffer; contentType: string } | null> {
+): Promise<{ body: Buffer; contentType: string } | null> {
   const parts = repoParts();
   const t = token();
   if (!parts || !t) return null;
@@ -194,31 +202,15 @@ export async function fetchArchiveAudioFromGitHub(
         cache: "no-store",
       });
       if (!fileRes.ok) return null;
-      const buf = await fileRes.arrayBuffer();
-      if (buf.byteLength < 200) return null;
-      const lower = filePath.toLowerCase();
-      const contentType = lower.endsWith(".wav")
-        ? "audio/wav"
-        : lower.endsWith(".ogg")
-          ? "audio/ogg"
-          : lower.endsWith(".webm")
-            ? "audio/webm"
-            : "audio/mpeg";
-      return { body: buf, contentType };
+      const buf = Buffer.from(await fileRes.arrayBuffer());
+      if (buf.length < 200) return null;
+      return { body: buf, contentType: audioContentType(filePath) };
     }
 
     if (data.encoding === "base64" && data.content) {
       const buf = Buffer.from(data.content.replace(/\n/g, ""), "base64");
       if (buf.length < 200) return null;
-      const lower = filePath.toLowerCase();
-      const contentType = lower.endsWith(".wav")
-        ? "audio/wav"
-        : lower.endsWith(".ogg")
-          ? "audio/ogg"
-          : lower.endsWith(".webm")
-            ? "audio/webm"
-            : "audio/mpeg";
-      return { body: buf, contentType };
+      return { body: buf, contentType: audioContentType(filePath) };
     }
     return null;
   } catch {

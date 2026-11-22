@@ -88,11 +88,11 @@ export async function GET(req: Request, { params }: Params) {
       if (recordingFile) {
         const ghAudio = await fetchArchiveAudioFromGitHub(recordingFile);
         if (ghAudio) {
-          return new NextResponse(ghAudio.body, {
+          return new NextResponse(new Uint8Array(ghAudio.body), {
             status: 200,
             headers: {
               "Content-Type": ghAudio.contentType,
-              "Content-Length": String(ghAudio.body.byteLength),
+              "Content-Length": String(ghAudio.body.length),
               "Accept-Ranges": "bytes",
               "Cache-Control": "private, max-age=3600",
             },
