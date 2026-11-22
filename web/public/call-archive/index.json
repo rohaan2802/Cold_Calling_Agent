@@ -1,6 +1,40 @@
 {
-  "updatedAt": "2026-11-22T17:57:02.784Z",
+  "updatedAt": "2026-11-22T19:03:54.543Z",
   "calls": [
+    {
+      "id": "01a20471-a558-7003-a6ef-c01892f0974c",
+      "type": "webCall",
+      "status": "ended",
+      "endedReason": "customer-ended-call",
+      "startedAt": "2026-11-22T18:08:06.780Z",
+      "endedAt": "2026-11-22T18:08:29.474Z",
+      "createdAt": "2026-11-22T18:08:06.488Z",
+      "cost": 0.0246,
+      "customer": "",
+      "assistantId": "29ef7ba6-0642-442f-bb6e-8798734fd7a6",
+      "transcript": "Alex: Hi there.\nAlex: Are you there?\n",
+      "summary": "",
+      "recordingFile": "audio/01a20471-a558-7003-a6ef-c01892f0974c.mp3",
+      "archivedAt": "2026-11-22T18:52:52.606Z",
+      "source": "vapi-sync"
+    },
+    {
+      "id": "01a2046b-e2c7-7003-a6c8-57543810a18b",
+      "type": "webCall",
+      "status": "ended",
+      "endedReason": "customer-ended-call",
+      "startedAt": "2026-11-22T18:01:49.281Z",
+      "endedAt": "2026-11-22T18:02:29.946Z",
+      "createdAt": "2026-11-22T18:01:48.999Z",
+      "cost": 0.0495,
+      "customer": "",
+      "assistantId": "29ef7ba6-0642-442f-bb6e-8798734fd7a6",
+      "transcript": "Alex: Hi.\nAlex: Are you there?\nProspect: Hi. Yes.\nAlex: Do you have about 30 seconds for a quick chat?\nProspect: Sure.\nAlex: How do you currently manage follow ups and reminders?\nProspect: Actually, I'm busy. Uh, can you talk\nAlex: 20\n",
+      "summary": "",
+      "recordingFile": "audio/01a2046b-e2c7-7003-a6c8-57543810a18b.mp3",
+      "archivedAt": "2026-11-22T18:52:53.687Z",
+      "source": "vapi-sync"
+    },
     {
       "id": "demo-web-002",
       "type": "webCall",
