@@ -50,15 +50,15 @@ export async function POST(req: Request) {
           model: {
             provider: "groq",
             model: "llama-3.3-70b-versatile",
-            temperature: 0.35,
-            maxTokens: 110,
+          temperature: 0.55,
+          maxTokens: 140,
             messages: [{ role: "system", content: ENGLISH_SYSTEM_PROMPT }],
           },
           voice: {
             provider: "vapi",
             voiceId: "Elliot",
             language: "en",
-            speed: 0.8,
+            speed: 0.88,
           },
           ...speech,
         },

@@ -47,13 +47,12 @@ const CALL_AGENT_NOTES = [
 
 const OPENINGS: Record<Lang, string> = {
   english: ENGLISH_FIRST_MESSAGE,
-  urdu:
-    "Assalam o alaikum, main Alex hoon Vantora se. Hum teams ka rozmarra kaam automate karte hain taake time bache. Tees seconds? Main short aur clear rakhta hoon.",
+  urdu: "Assalam o alaikum — Alex Vantora se. Follow-ups asaan banate hain. Tees seconds mil sakte hain?",
 };
 
 const END_MSG: Record<Lang, string> = {
   english: ENGLISH_END_MESSAGE,
-  urdu: "Aapke time ka shukriya. Allah hafiz!",
+  urdu: "Aapke time ka shukriya — Allah hafiz!",
 };
 
 const UI = {
@@ -67,6 +66,7 @@ const UI = {
     end: "End call",
     loading: "Loading…",
     ready: "Ready · English selected",
+    connecting: "Connecting… Alex will speak in a moment",
     endedStatus: "Call ended — recording will land in Call History after archive",
     speaking: "Alex is speaking…",
     listening: "Listening…",
@@ -83,6 +83,7 @@ const UI = {
     end: "End call",
     loading: "Loading…",
     ready: "Ready · Urdu selected",
+    connecting: "Connect ho raha hai… Alex abhi bolega",
     endedStatus: "Call khatam — recording archive ke baad History mein aati hai",
     speaking: "Alex bol raha hai…",
     listening: "Sun raha hai… boliye",
@@ -139,6 +140,7 @@ export default function TalkToAgent() {
   const pendingEndAfterSpeechRef = useRef(false);
   const speakingRef = useRef(false);
   const [ready, setReady] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [active, setActive] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [ended, setEnded] = useState(false);
@@ -148,6 +150,8 @@ export default function TalkToAgent() {
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
   const [elapsedSec, setElapsedSec] = useState(0);
   const callStartedAtRef = useRef<number | null>(null);
+  const lockSentRef = useRef(false);
+  const firstSpeechDoneRef = useRef(false);
 
   const publicKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || "";
   const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || "";
@@ -336,8 +340,8 @@ export default function TalkToAgent() {
         model: {
           provider: "groq",
           model: "llama-3.3-70b-versatile",
-          temperature: 0.35,
-          maxTokens: 110,
+          temperature: 0.55,
+          maxTokens: 140,
           messages: [{ role: "system", content: URDU_SYSTEM_PROMPT }],
         },
         voice: {
@@ -358,8 +362,8 @@ export default function TalkToAgent() {
       model: {
         provider: "groq",
         model: "llama-3.3-70b-versatile",
-        temperature: 0.35,
-        maxTokens: 110,
+        temperature: 0.55,
+        maxTokens: 140,
         messages: [{ role: "system", content: ENGLISH_SYSTEM_PROMPT }],
       },
       voice: {
@@ -425,25 +429,16 @@ export default function TalkToAgent() {
     vapi.on("call-start", () => {
       endingRef.current = false;
       startedRef.current = true;
+      lockSentRef.current = false;
+      firstSpeechDoneRef.current = false;
+      setConnecting(false);
       setActive(true);
       setEnded(false);
       setError("");
       setTranscript([]);
       resetIdleSteps();
       maxVapiVolume(vapi);
-
-      try {
-        const lang = langRef.current;
-        vapi.send({
-          type: "add-message",
-          message: {
-            role: "system",
-            content: lang === "urdu" ? URDU_LOCK_REINFORCE : ENGLISH_LOCK,
-          },
-        });
-      } catch {
-        /* ignore */
-      }
+      // Do NOT inject system messages here — it delays / stalls firstMessage TTS.
     });
 
     vapi.on("speech-start", () => {
@@ -456,6 +451,23 @@ export default function TalkToAgent() {
     vapi.on("speech-end", () => {
       speakingRef.current = false;
       setSpeaking(false);
+      // Reinforce language lock AFTER opening finishes — keeps first audio fast
+      if (!lockSentRef.current && !firstSpeechDoneRef.current) {
+        firstSpeechDoneRef.current = true;
+        lockSentRef.current = true;
+        try {
+          const lang = langRef.current;
+          vapi.send({
+            type: "add-message",
+            message: {
+              role: "system",
+              content: lang === "urdu" ? URDU_LOCK_REINFORCE : ENGLISH_LOCK,
+            },
+          });
+        } catch {
+          /* ignore */
+        }
+      }
       if (pendingEndAfterSpeechRef.current) {
         pendingEndAfterSpeechRef.current = false;
         clearHangupDelay();
@@ -466,8 +478,11 @@ export default function TalkToAgent() {
     vapi.on("call-end", () => {
       endingRef.current = true;
       pendingEndAfterSpeechRef.current = false;
+      lockSentRef.current = false;
+      firstSpeechDoneRef.current = false;
       resetIdleSteps();
       clearHangupDelay();
+      setConnecting(false);
       setActive(false);
       setSpeaking(false);
       speakingRef.current = false;
@@ -559,6 +574,7 @@ export default function TalkToAgent() {
         endingRef.current = true;
         resetIdleSteps();
         startedRef.current = false;
+        setConnecting(false);
         setActive(false);
         setSpeaking(false);
         tearDownVoiceBoost();
@@ -573,6 +589,7 @@ export default function TalkToAgent() {
         endingRef.current = true;
         resetIdleSteps();
         startedRef.current = false;
+        setConnecting(false);
         setActive(false);
         setSpeaking(false);
         tearDownVoiceBoost();
@@ -584,6 +601,7 @@ export default function TalkToAgent() {
       endingRef.current = true;
       resetIdleSteps();
       startedRef.current = false;
+      setConnecting(false);
       setActive(false);
       setSpeaking(false);
       tearDownVoiceBoost();
@@ -593,11 +611,22 @@ export default function TalkToAgent() {
 
     setReady(true);
 
+    // Pre-warm mic permission so Start feels instant (no late browser prompt stall)
+    void navigator.mediaDevices
+      ?.getUserMedia?.({ audio: true })
+      .then((stream) => {
+        stream.getTracks().forEach((t) => t.stop());
+      })
+      .catch(() => {
+        /* user can still allow on Start */
+      });
+
     return () => {
       endingRef.current = true;
       resetIdleSteps();
       clearHangupDelay();
       tearDownVoiceBoost();
+      setConnecting(false);
       vapi.stop();
       vapiRef.current = null;
     };
@@ -637,11 +666,15 @@ export default function TalkToAgent() {
       setError("");
       setInfo("");
       setEnded(false);
+      setConnecting(true);
       endingRef.current = false;
       startedRef.current = false;
+      lockSentRef.current = false;
+      firstSpeechDoneRef.current = false;
       await startSession(langRef.current);
     } catch (e) {
       startedRef.current = false;
+      setConnecting(false);
       setActive(false);
       setEnded(false);
       const msg = errorText(e) || (e instanceof Error ? e.message : "");
@@ -696,19 +729,23 @@ export default function TalkToAgent() {
         </ul>
       )}
 
-      <div className={`pulse-wrap ${active ? "live" : ""} ${speaking ? "speaking" : ""}`}>
+      <div
+        className={`pulse-wrap ${active || connecting ? "live" : ""} ${speaking ? "speaking" : ""}`}
+      >
         <button
           type="button"
           className={`talk-btn ${active ? "stop" : "start"}`}
           onClick={() => void toggle()}
-          disabled={!ready}
+          disabled={!ready || connecting}
+          aria-busy={connecting}
         >
-          {active ? copy.end : copy.start}
+          {active ? copy.end : connecting ? "Connecting…" : copy.start}
         </button>
         <p className="status-line">
           {!ready && copy.loading}
-          {ready && !active && !ended && copy.ready}
-          {ready && !active && ended && copy.endedStatus}
+          {ready && connecting && !active && copy.connecting}
+          {ready && !connecting && !active && !ended && copy.ready}
+          {ready && !connecting && !active && ended && copy.endedStatus}
           {active && speaking && `${copy.speaking} · ${formatElapsed(elapsedSec)}`}
           {active && !speaking && `${copy.listening} · ${formatElapsed(elapsedSec)}`}
         </p>

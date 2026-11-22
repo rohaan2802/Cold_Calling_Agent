@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { startTransition, useEffect, useMemo, useRef, useState } from "react";
 import { useAutoDismiss } from "@/hooks/useAutoDismiss";
 import { friendlyUserError, userMsg } from "@/lib/callErrors";
 import {
@@ -62,9 +62,20 @@ export default function CallHistory() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [outcomeFilter, setOutcomeFilter] = useState<OutcomeFilter>("all");
+  const callsSigRef = useRef("");
+  const refreshInFlightRef = useRef<Promise<void> | null>(null);
 
   useAutoDismiss(error, () => setError(""));
   useAutoDismiss(info, () => setInfo(""));
+
+  function callsSignature(list: VapiCall[]): string {
+    return list
+      .map(
+        (c) =>
+          `${c.id}:${getRecordingSource(c)}:${c.displayName || ""}:${c.startedAt || c.createdAt || ""}:${c.endedAt || ""}`
+      )
+      .join("|");
+  }
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -118,39 +129,66 @@ export default function CallHistory() {
   }
 
   async function load(isRefresh = false) {
-    if (!isRefresh) setLoading(true);
-    else setRefreshing(true);
-    setError("");
-    try {
-      // Bust browser/CDN cache — Refresh was returning a stale list
-      const res = await fetch(`/api/calls?t=${Date.now()}`, {
-        credentials: "same-origin",
-        cache: "no-store",
-        headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(friendlyUserError(data.error || userMsg("loadCalls")));
-        if (!isRefresh) setCalls([]);
-        return;
-      }
-      const next = Array.isArray(data) ? data : [];
-      setCalls(next);
-      // Always jump to page 1 on refresh so the newest row is visible
-      if (isRefresh) setPage(1);
-      else {
-        setPage((p) => {
-          const pages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
-          return Math.min(p, pages);
-        });
-      }
-      void loadArchiveMeta();
-    } catch (err) {
-      setError(friendlyUserError(err));
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+    // Hard data refresh without blanking the list / full page reload (no blink)
+    if (isRefresh && refreshInFlightRef.current) {
+      return refreshInFlightRef.current;
     }
+
+    const run = (async () => {
+      if (!isRefresh) setLoading(true);
+      else setRefreshing(true);
+      if (!isRefresh) setError("");
+      try {
+        const bust = Date.now();
+        const res = await fetch(`/api/calls?hard=1&t=${bust}`, {
+          credentials: "same-origin",
+          cache: "no-store",
+          headers: {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            Pragma: "no-cache",
+            "X-Vantora-Refresh": "hard",
+          },
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          setError(friendlyUserError(data.error || userMsg("loadCalls")));
+          if (!isRefresh) setCalls([]);
+          return;
+        }
+        const next = Array.isArray(data) ? data : [];
+        const sig = callsSignature(next);
+        // Skip React paint when nothing meaningful changed — kills list blink
+        if (sig !== callsSigRef.current) {
+          callsSigRef.current = sig;
+          startTransition(() => {
+            setCalls(next);
+            if (isRefresh) setPage(1);
+            else {
+              setPage((p) => {
+                const pages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
+                return Math.min(p, pages);
+              });
+            }
+          });
+        } else if (isRefresh) {
+          setPage(1);
+        }
+        void loadArchiveMeta();
+      } catch (err) {
+        setError(friendlyUserError(err));
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    })();
+
+    if (isRefresh) {
+      refreshInFlightRef.current = run.finally(() => {
+        refreshInFlightRef.current = null;
+      });
+      return refreshInFlightRef.current;
+    }
+    return run;
   }
 
   useEffect(() => {
@@ -357,11 +395,13 @@ export default function CallHistory() {
           </button>
           <button
             type="button"
-            className="ghost-btn"
+            className={`ghost-btn${refreshing ? " is-silent-refresh" : ""}`}
             onClick={() => void load(true)}
             disabled={loading || refreshing || syncing}
+            aria-busy={refreshing}
+            title="Hard-refresh call list + archive badges without reloading the page"
           >
-            {refreshing ? "Refreshing…" : "Refresh"}
+            Refresh
           </button>
         </div>
       </div>

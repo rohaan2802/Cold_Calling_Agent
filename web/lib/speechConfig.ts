@@ -1,10 +1,10 @@
 /**
- * Shared STT / turn-taking tuned so client speech is less often dropped.
- * Deepgram default endpointing (10ms) misses short / quiet utterances — use 300.
+ * Shared STT / turn-taking — snappy replies, natural barge-in, no mid-call freeze.
+ * Deepgram default endpointing (10ms) misses short / quiet utterances — use ~250.
  */
 
-/** Casual pace — not rushed, not slow (1.0 feels fast on Elliot) */
-export const VOICE_SPEED = 0.8;
+/** Slightly brisk — still natural on Elliot */
+export const VOICE_SPEED = 0.88;
 
 /** Seconds between idle nudge / end steps (VAPI speech.timeout hooks) — keep long so thinking ≠ “gone” */
 export const IDLE_STEP_SECONDS = 25;
@@ -25,6 +25,8 @@ const KEYWORDS = [
   "busy",
   "call",
   "later",
+  "student",
+  "student:1",
 ];
 
 export function deepgramTranscriber(language: "en" | "ur" | "multi") {
@@ -34,31 +36,32 @@ export function deepgramTranscriber(language: "en" | "ur" | "multi") {
     language,
     smartFormat: true,
     numerals: true,
-    confidenceThreshold: 0.25,
-    endpointing: 300,
+    confidenceThreshold: 0.22,
+    endpointing: 250,
     keywords: KEYWORDS,
   };
 }
 
+/** Fast turn-taking — long waits made Alex feel mute after the user spoke */
 export const startSpeakingPlan = {
-  waitSeconds: 0.7,
+  waitSeconds: 0.35,
   smartEndpointingEnabled: true,
   transcriptionEndpointingPlan: {
-    onPunctuationSeconds: 0.4,
-    onNoPunctuationSeconds: 1.8,
-    onNumberSeconds: 0.8,
+    onPunctuationSeconds: 0.25,
+    onNoPunctuationSeconds: 0.95,
+    onNumberSeconds: 0.55,
   },
 };
 
 /**
- * Harder to barge-in — ambient noise / short sounds were cutting Alex mid-salam
- * ("Assalam…" then silence). Need several real words before he stops.
+ * Natural barge-in: a few real words stop Alex, then he replies quickly.
+ * (numWords 7 + backoff 2.2s made interrupts feel like permanent silence.)
+ * Opening greeting still protected via firstMessageInterruptionsEnabled: false.
  */
 export const stopSpeakingPlan = {
-  // Higher bar — short "yeah / sorry / again" was cutting Alex mid-sentence → freeze
-  numWords: 7,
-  voiceSeconds: 0.5,
-  backoffSeconds: 2.2,
+  numWords: 3,
+  voiceSeconds: 0.3,
+  backoffSeconds: 0.85,
   acknowledgementPhrases: [
     "okay",
     "ok",

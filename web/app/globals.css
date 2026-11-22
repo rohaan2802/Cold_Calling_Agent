@@ -657,6 +657,13 @@ main {
   color: var(--accent);
 }
 
+/* Soft in-place refresh — button only, never blank the page */
+.ghost-btn.is-silent-refresh {
+  border-color: var(--accent);
+  color: var(--accent);
+  opacity: 0.85;
+}
+
 .ghost-btn.sm {
   padding: 0.4rem 0.75rem;
   font-size: 0.88rem;
