@@ -221,19 +221,32 @@ export default function TalkToAgent() {
   }
 
   function amplifyAssistantAudio(player: HTMLAudioElement) {
+    // Keep native playback reliable. Re-wiring MediaElementSource mid-call
+    // often yields "transcript updates but no voice" (element can only connect once).
     try {
-      player.volume = 1;
       player.muted = false;
+      player.volume = 1;
+      void player.play?.();
     } catch {
       /* ignore */
     }
 
     if (boostHookedPlayerRef.current === player && boostGainRef.current) {
-      boostGainRef.current.gain.value = LIVE_VOICE_GAIN;
+      try {
+        boostGainRef.current.gain.value = LIVE_VOICE_GAIN;
+        if (boostCtxRef.current?.state === "suspended") {
+          void boostCtxRef.current.resume();
+        }
+      } catch {
+        /* ignore */
+      }
       return;
     }
 
-    tearDownVoiceBoost();
+    // Only boost once per player element — never tear down while the call is live
+    if (boostHookedPlayerRef.current && boostHookedPlayerRef.current !== player) {
+      tearDownVoiceBoost();
+    }
 
     try {
       const AudioCtx =
@@ -250,7 +263,7 @@ export default function TalkToAgent() {
       boostHookedPlayerRef.current = player;
       void ctx.resume();
     } catch {
-      /* native volume=1 still applied */
+      /* volume=1 path still works if Web Audio rejects a re-connect */
     }
   }
 
@@ -350,63 +363,47 @@ export default function TalkToAgent() {
   }
 
   /**
-   * Browser backup idle only — VAPI hooks handle normal presence checks.
-   * Do NOT use vapi.say() here (breaks the LLM response loop mid-call).
+   * Soft backup nudge only — never force hangup on silence (user may be thinking).
+   * Do NOT use vapi.say() (breaks the LLM/voice loop → transcript without audio).
    */
   function armIdleTimer() {
     clearIdleTimer();
     if (!startedRef.current || endingRef.current) return;
 
-    // Safety net far above VAPI hooks (8s×3). If hooks fail, nudge via system msg.
     idleTimerRef.current = setTimeout(() => {
       const vapi = vapiRef.current;
       if (!vapi || endingRef.current || !startedRef.current) return;
 
       const step = idleStepRef.current;
+      if (step >= 2) {
+        // Stay on the line — VAPI silenceTimeoutSeconds is the safety net
+        return;
+      }
+      idleStepRef.current = step + 1;
       const lang = langRef.current === "urdu" ? "urdu" : "english";
       const nudge =
         lang === "urdu"
-          ? "User silent hai. Ek short Urdu line bolo: poochho ke wo line pe hain. English mat bolo."
-          : "User has been silent. Ask one short line if they are still there. Stay in English.";
-
-      if (step < 2) {
-        idleStepRef.current = step + 1;
-        try {
-          vapi.send({
-            type: "add-message",
-            message: { role: "system", content: nudge },
-          });
-        } catch {
-          /* ignore */
-        }
-        armIdleTimer();
-        return;
-      }
-
-      // Final backup end — still via model, not say()
+          ? "User silent hai. Ek short Urdu line bolo: poochho ke wo line pe hain. English mat bolo. Call mat kaato."
+          : "User has been silent. Ask one short line if they are still there. Stay in English. Do NOT end the call.";
       try {
         vapi.send({
           type: "add-message",
-          message: {
-            role: "system",
-            content:
-              lang === "urdu"
-                ? "User jawab nahi de rahe. Short Urdu mein shukriya + Allah hafiz bolo, phir endCall."
-                : "User is not responding. Say a short thanks and goodbye, then end the call.",
-          },
+          message: { role: "system", content: nudge },
         });
       } catch {
         /* ignore */
       }
-      scheduleCallEndAfterSpeech(4000);
-    }, Math.max(IDLE_MS * 4, 25000));
+      armIdleTimer();
+    }, Math.max(IDLE_MS * 5, 40000));
   }
 
   function buildOverrides(lang: Lang) {
     const code = lang === "urdu" ? "ur" : "en";
-    // Language-correct VAPI idle hooks (EN/UR). Avoid client vapi.say() idle —
-    // that was breaking mid-call turn-taking (Alex goes silent after a nudge).
-    const speech = speechCaptureOverrides(code, { clientManagedIdle: false });
+    // Language-correct idle nudges; never auto-hangup on silence for web calls.
+    const speech = speechCaptureOverrides(code, {
+      clientManagedIdle: false,
+      endOnSilence: false,
+    });
 
     if (lang === "urdu") {
       return {

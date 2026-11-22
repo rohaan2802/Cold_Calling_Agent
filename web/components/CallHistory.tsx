@@ -10,7 +10,9 @@ import {
   getCallTypeLabel,
   getDurationSeconds,
   getOutcome,
+  getRecordingSource,
   isDemoCall,
+  recordingSourceLabel,
   type VapiCall,
 } from "@/lib/vapi";
 
@@ -274,7 +276,8 @@ export default function CallHistory() {
           <h2>Call history</h2>
           <p className="lede">
             Demo samples stay forever (even if VAPI expires). Live calls join after archive pull.
-            Only your Delete button removes a row.
+            Only your Delete button removes a row. Recording badges:{" "}
+            <strong>(A)</strong> = permanent Archive, <strong>(V)</strong> = live VAPI (not archived yet).
           </p>
           {archiveUpdatedAt && (
             <p className="hint">
@@ -400,6 +403,16 @@ export default function CallHistory() {
                   </span>
                 </Link>
                 <div className="call-actions">
+                  <span
+                    className={`badge source-badge source-${getRecordingSource(call).toLowerCase()}`}
+                    title={
+                      getRecordingSource(call) === "A"
+                        ? "Playing from permanent Archive"
+                        : "Playing from live VAPI (archive after Pull + deploy)"
+                    }
+                  >
+                    ({getRecordingSource(call)}) {recordingSourceLabel(getRecordingSource(call))}
+                  </span>
                   <span className={`badge sample ${isDemoCall(call) ? "" : "badge-slot"}`}>
                     {isDemoCall(call) ? "Demo" : ""}
                   </span>

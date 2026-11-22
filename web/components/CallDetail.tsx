@@ -12,8 +12,10 @@ import {
   getCallTypeLabel,
   getDurationSeconds,
   getOutcome,
+  getRecordingSource,
   getTranscript,
   isDemoCall,
+  recordingSourceLabel,
   type VapiCall,
 } from "@/lib/vapi";
 
@@ -177,7 +179,8 @@ export default function CallDetail({ id }: { id: string }) {
         <p className="lede">
           {call.startedAt ? new Date(call.startedAt).toLocaleString() : "—"} ·{" "}
           {formatDuration(getDurationSeconds(call))} · {getOutcome(call)}
-          {isDemoCall(call) ? " · Sample" : ""}
+          {isDemoCall(call) ? " · Sample" : ""} · ({getRecordingSource(call)}){" "}
+          {recordingSourceLabel(getRecordingSource(call))}
         </p>
       </div>
 
@@ -211,8 +214,9 @@ export default function CallDetail({ id }: { id: string }) {
             downloadName={`vantora-call-${id.slice(0, 8)}`}
           />
           <p className="hint">
-            Play in the browser, or download a louder WAV. After a live call, wait briefly then
-            refresh if audio is not ready yet.
+            ({getRecordingSource(call)}) = {recordingSourceLabel(getRecordingSource(call))}.{" "}
+            <strong>A</strong> = permanent Archive file; <strong>V</strong> = live VAPI (Pull +
+            deploy to archive). After a live call, wait briefly then refresh if audio is not ready.
           </p>
         </div>
 
@@ -238,9 +242,8 @@ export default function CallDetail({ id }: { id: string }) {
             <div className="meta-inline">
               <dt>Storage</dt>
               <dd>
-                {isDemoCall(call)
-                  ? "Permanent archive (demo sample)"
-                  : "Permanent archive (+ VAPI until synced)"}
+                ({getRecordingSource(call)}) {recordingSourceLabel(getRecordingSource(call))}
+                {isDemoCall(call) ? " · demo sample" : ""}
               </dd>
             </div>
           </dl>

@@ -20,7 +20,8 @@ STYLE (HARD):
 - Never Roman Urdu / Hindi mix. Never invent features.
 - Listen fully; do not talk over the prospect.
 - Sound human: "Got it", "Sure", "Absolutely" ok — no long monologues.
-- If the prospect stays silent ~10s, the system ends the call politely — do not keep talking into dead air.
+- If cut off mid-line, continue on the next turn — never freeze.
+- NEVER end the call only because the user paused. Keep listening. Only end on explicit hang-up, firm "no" twice, or "remove me".
 
 ${ENGLISH_LANGUAGE_LOCK_RULES}
 
@@ -72,7 +73,7 @@ const body = {
     "Hi there! This is Alex calling from Vantora. We help businesses automate repetitive workflows so teams can save hours every week. Do you have thirty seconds? I promise to keep it brief.",
   endCallMessage: "Thanks for your time today. Have a great day!",
   firstMessageMode: "assistant-speaks-first",
-  silenceTimeoutSeconds: 60,
+  silenceTimeoutSeconds: 180,
   maxDurationSeconds: 240,
   backgroundDenoisingEnabled: true,
   backgroundSound: "off",

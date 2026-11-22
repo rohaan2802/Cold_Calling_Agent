@@ -118,7 +118,7 @@ Once a language is locked for a call (**web Call Agent**, **outbound**, or **inb
 
 | Provider | Why | Link |
 |----------|-----|------|
-| Twilio | Import number → bypass free-number daily outbound cap | [twilio.com](https://www.twilio.com) |
+| Twilio | Import your own number if you need higher outbound volume than the free VAPI line | [twilio.com](https://www.twilio.com) |
 | Telnyx | Same idea; often trial credits | [telnyx.com](https://telnyx.com) |
 | Vonage | Import into VAPI | [vonage.com](https://www.vonage.com) |
 
@@ -180,7 +180,7 @@ Do **not** put the VAPI free number as the outbound “to” number — that wou
 
 **There is no unlimited free Twilio clone.** Closest free path = VAPI free number + TextMe + wait for daily reset. Closest “pay almost nothing now” = Telnyx / Vonage / Twilio **trial**.
 
-### Import path (when you want to bypass daily free-number limit)
+### Import path (higher outbound volume via your own Twilio/Telnyx number)
 
 1. Sign up Telnyx or Twilio → get a US number  
 2. VAPI Dashboard → Phone Numbers → **Import**  
@@ -473,10 +473,15 @@ NEXT_PUBLIC_VAPI_ASSISTANT_ID=
 
 Sync local web: `npm run sync:web-env`
 
-### Local run (Windows)
+### Local run (optional — not required for the live site)
+
+Production runs on **Vercel + GitHub Actions** only. You can delete your Desktop copy anytime; the live site does not depend on your PC.
 
 ```powershell
-cd "C:\Users\CodeTech\Desktop\Cold_Calling_Agent"
+git clone https://github.com/rohaan2802/Cold_Calling_Agent.git
+cd Cold_Calling_Agent
+copy .env.example .env   # fill keys locally if you want to develop
+npm run sync:web-env
 .\RUN.cmd
 ```
 

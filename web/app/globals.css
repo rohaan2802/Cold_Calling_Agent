@@ -777,6 +777,22 @@ main {
   padding-right: 0.75rem;
 }
 
+.badge.source-badge {
+  width: 100%;
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+}
+
+.badge.source-a {
+  background: rgba(70, 180, 130, 0.18);
+  color: #7dffc4;
+}
+
+.badge.source-v {
+  background: rgba(120, 160, 255, 0.18);
+  color: #a8c4ff;
+}
+
 .product-guide,
 .eval-guide {
   margin: 0;

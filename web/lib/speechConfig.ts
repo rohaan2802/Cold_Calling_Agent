@@ -225,13 +225,14 @@ export function endCallPhrasesFor(language: "en" | "ur"): string[] {
 }
 
 /**
- * Outbound / fixed-language: 5s check → 10s check → 15s polite end.
- * Each timeout is from last user speech (VAPI resets on speech).
+ * Presence nudges only — NEVER auto endCall on silence for web Call Agent.
+ * (Ending on silence made Alex "go quiet forever" / kill mid-conversation.)
  */
-export function idlePresenceHooks(language: "en" | "ur") {
+export function idlePresenceHooks(language: "en" | "ur", opts?: { endOnSilence?: boolean }) {
   const { check1, check2, end } = idleLines(language);
+  const endOnSilence = opts?.endOnSilence !== false;
 
-  return [
+  const hooks = [
     {
       on: "customer.speech.timeout" as const,
       name: "idle_check_1",
@@ -252,11 +253,17 @@ export function idlePresenceHooks(language: "en" | "ur") {
       },
       do: [{ type: "say" as const, exact: check2 }],
     },
+  ];
+
+  if (!endOnSilence) return hooks;
+
+  return [
+    ...hooks,
     {
       on: "customer.speech.timeout" as const,
       name: "idle_end_call",
       options: {
-        timeoutSeconds: IDLE_STEP_SECONDS * 3,
+        timeoutSeconds: IDLE_STEP_SECONDS * 4,
         triggerMaxCount: 1,
         triggerResetMode: "onUserSpeech" as const,
       },
@@ -274,6 +281,8 @@ type SpeechOpts = {
    * so Urdu never hears English “Are you there?” from the base assistant hooks.
    */
   clientManagedIdle?: boolean;
+  /** Web Call Agent: never hang up only because the user paused */
+  endOnSilence?: boolean;
 };
 
 /** Overrides shared by web Call Agent + outbound phone */
@@ -282,6 +291,7 @@ export function speechCaptureOverrides(
   opts: SpeechOpts = {}
 ) {
   const clientIdle = Boolean(opts.clientManagedIdle);
+  const endOnSilence = opts.endOnSilence !== false;
 
   return {
     transcriber: deepgramTranscriber(language),
@@ -290,11 +300,11 @@ export function speechCaptureOverrides(
     backgroundDenoisingEnabled: true,
     /** Never barge into the opening greeting */
     firstMessageInterruptionsEnabled: false,
-    // Long enough that thinking pauses do not kill the call
-    silenceTimeoutSeconds: clientIdle ? 180 : 45,
+    // Long pause OK — do not kill web calls for thinking time
+    silenceTimeoutSeconds: clientIdle || !endOnSilence ? 300 : 60,
     // Prefer VAPI speech.timeout hooks (keeps LLM turn-taking alive).
     // clientManagedIdle=true clears hooks when the browser drives idle itself.
-    hooks: clientIdle ? [] : idlePresenceHooks(language),
+    hooks: clientIdle ? [] : idlePresenceHooks(language, { endOnSilence }),
     clientMessages: ["transcript", "conversation-update", "speech-update"] as string[],
   };
 }

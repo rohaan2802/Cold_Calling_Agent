@@ -160,6 +160,28 @@ export function isDemoCall(call: VapiCall): boolean {
   );
 }
 
+/** Where playback audio is expected from — archive file vs live VAPI URL */
+export type RecordingSource = "A" | "V";
+
+export function getRecordingSource(call: VapiCall): RecordingSource {
+  const url = String(
+    call.recordingUrl || call.artifact?.recordingUrl || ""
+  ).toLowerCase();
+  if (
+    url.includes("/call-archive/") ||
+    call.source === "vapi-sync" ||
+    call.source === "demo-seed" ||
+    isDemoCall(call)
+  ) {
+    return "A";
+  }
+  return "V";
+}
+
+export function recordingSourceLabel(src: RecordingSource): string {
+  return src === "A" ? "Archive" : "VAPI";
+}
+
 export function getOutcome(call: VapiCall): string {
   if (isDeletedCall(call)) return "Deleted";
 
