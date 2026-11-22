@@ -12,7 +12,6 @@ import {
   getOutcome,
   getRecordingSource,
   isDemoCall,
-  recordingSourceLabel,
   type VapiCall,
 } from "@/lib/vapi";
 
@@ -395,7 +394,19 @@ export default function CallHistory() {
             <li key={call.id}>
               <div className="call-row">
                 <Link href={`/calls/${call.id}`} className="call-main">
-                  <strong>{who}</strong>
+                  <strong className="call-title">
+                    {who}
+                    <span
+                      className={`badge source-badge source-${getRecordingSource(call).toLowerCase()}`}
+                      title={
+                        getRecordingSource(call) === "A"
+                          ? "Playing from permanent Archive"
+                          : "Playing from live VAPI (archive after Pull + deploy)"
+                      }
+                    >
+                      ({getRecordingSource(call)})
+                    </span>
+                  </strong>
                   <span className="meta">
                     {when ? new Date(when).toLocaleString() : "—"} · {duration} ·{" "}
                     {getCallTypeLabel(call)}
@@ -403,16 +414,6 @@ export default function CallHistory() {
                   </span>
                 </Link>
                 <div className="call-actions">
-                  <span
-                    className={`badge source-badge source-${getRecordingSource(call).toLowerCase()}`}
-                    title={
-                      getRecordingSource(call) === "A"
-                        ? "Playing from permanent Archive"
-                        : "Playing from live VAPI (archive after Pull + deploy)"
-                    }
-                  >
-                    ({getRecordingSource(call)}) {recordingSourceLabel(getRecordingSource(call))}
-                  </span>
                   <span className={`badge sample ${isDemoCall(call) ? "" : "badge-slot"}`}>
                     {isDemoCall(call) ? "Demo" : ""}
                   </span>

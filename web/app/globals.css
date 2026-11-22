@@ -156,6 +156,8 @@ main {
   letter-spacing: -0.03em;
   padding-left: 0.35rem;
   white-space: nowrap;
+  line-height: 1.25;
+  overflow: visible;
 }
 
 .brand span {
@@ -211,21 +213,25 @@ main {
 .hero-brand {
   font-family: var(--font-display);
   font-size: clamp(2.6rem, 8vw, 5.2rem);
-  line-height: 0.95;
+  line-height: 1.08;
   margin: 0.35rem 0 0.7rem;
   letter-spacing: -0.04em;
   word-break: break-word;
+  overflow: visible;
+  padding-bottom: 0.06em;
 }
 
 .hero h1 {
   font-family: var(--font-display);
   font-size: clamp(1.45rem, 3.4vw, 2.2rem);
-  line-height: 1.25;
+  line-height: 1.4;
   margin: 0 0 0.9rem;
   letter-spacing: -0.02em;
   font-weight: 600;
   color: var(--ink);
-  max-width: 32ch;
+  max-width: 34ch;
+  overflow: visible;
+  padding-bottom: 0.12em;
 }
 
 .hero .lede {
@@ -354,6 +360,9 @@ main {
   letter-spacing: -0.02em;
   font-size: clamp(1.35rem, 2.5vw, 1.75rem);
   word-break: break-word;
+  line-height: 1.35;
+  overflow: visible;
+  padding-bottom: 0.08em;
 }
 
 .panel-head.row {
@@ -681,9 +690,22 @@ main {
   min-width: 0;
 }
 
-.call-main strong {
+.call-main .call-title {
+  display: inline;
   font-size: 1.08rem;
-  word-break: break-word;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.call-main .call-title .source-badge {
+  display: inline;
+  width: auto;
+  margin-left: 0.45rem;
+  padding: 0.1rem 0.35rem;
+  font-size: 0.75rem;
+  line-height: 1;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .call-main:hover strong {
@@ -818,6 +840,9 @@ main {
   font-family: var(--font-display);
   font-size: 1.05rem;
   color: var(--ink);
+  line-height: 1.35;
+  overflow: visible;
+  padding-bottom: 0.06em;
 }
 
 .capability p {
@@ -851,6 +876,9 @@ main {
   font-family: var(--font-display);
   color: var(--accent);
   margin-bottom: 0.2rem;
+  line-height: 1.3;
+  overflow: visible;
+  padding-bottom: 0.05em;
 }
 
 .history-stats span {

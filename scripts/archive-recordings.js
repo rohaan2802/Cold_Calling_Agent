@@ -69,6 +69,18 @@ function writeIndex(calls) {
   fs.writeFileSync(INDEX_FILE, JSON.stringify(payload, null, 2));
 }
 
+/** VAPI mono / CDN can hang forever without this — was the 20+ min Action stall. */
+const HTTP_TIMEOUT_MS = Math.max(
+  5000,
+  Number(process.env.ARCHIVE_HTTP_TIMEOUT_MS || 25000) || 25000
+);
+
+function armTimeout(req, label) {
+  req.setTimeout(HTTP_TIMEOUT_MS, () => {
+    req.destroy(new Error(`${label} timeout after ${HTTP_TIMEOUT_MS}ms`));
+  });
+}
+
 function vapiGet(apiKey, urlPath) {
   return new Promise((resolve, reject) => {
     const req = https.request(
@@ -93,6 +105,7 @@ function vapiGet(apiKey, urlPath) {
         });
       }
     );
+    armTimeout(req, `VAPI GET ${urlPath}`);
     req.on("error", reject);
     req.end();
   });
@@ -102,25 +115,31 @@ function downloadToFile(url, destPath) {
   return new Promise((resolve, reject) => {
     const lib = url.startsWith("http://") ? http : https;
     const file = fs.createWriteStream(destPath);
+    const cleanup = () => {
+      file.close();
+      fs.unlink(destPath, () => {});
+    };
     const req = lib.get(url, { headers: { "User-Agent": "vantora-archive/1.0" } }, (res) => {
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        file.close();
-        fs.unlink(destPath, () => {});
+        cleanup();
         downloadToFile(res.headers.location, destPath).then(resolve, reject);
         return;
       }
       if ((res.statusCode || 500) >= 400) {
-        file.close();
-        fs.unlink(destPath, () => {});
+        cleanup();
         reject(new Error(`Download HTTP ${res.statusCode}`));
         return;
       }
       res.pipe(file);
       file.on("finish", () => file.close(() => resolve(destPath)));
+      res.on("error", (err) => {
+        cleanup();
+        reject(err);
+      });
     });
+    armTimeout(req, `download ${url.slice(0, 60)}`);
     req.on("error", (err) => {
-      file.close();
-      fs.unlink(destPath, () => {});
+      cleanup();
       reject(err);
     });
   });
@@ -200,8 +219,10 @@ async function downloadMono(apiKey, id, destPath) {
         const file = fs.createWriteStream(destPath);
         res.pipe(file);
         file.on("finish", () => file.close(() => resolve(destPath)));
+        res.on("error", reject);
       }
     );
+    armTimeout(req, `mono-recording ${id}`);
     req.on("error", reject);
     req.end();
   });
@@ -231,26 +252,30 @@ async function archiveOne(apiKey, call, existingIds) {
   let dest = path.join(AUDIO_DIR, `${call.id}.${ext}`);
   let ok = false;
 
-  try {
-    await downloadMono(apiKey, call.id, dest);
-    ok = fs.existsSync(dest) && fs.statSync(dest).size > 500;
-  } catch {
-    ok = false;
+  // Prefer recording URLs first — mono-recording has been observed to hang indefinitely.
+  for (const url of recordingCandidates(call)) {
+    ext = pickExt(url);
+    dest = path.join(AUDIO_DIR, `${call.id}.${ext}`);
+    try {
+      await downloadToFile(url, dest);
+      if (fs.existsSync(dest) && fs.statSync(dest).size > 500) {
+        ok = true;
+        break;
+      }
+    } catch (err) {
+      console.warn(`URL download failed for ${call.id}: ${err.message || err}`);
+    }
   }
 
   if (!ok) {
-    for (const url of recordingCandidates(call)) {
-      ext = pickExt(url);
-      dest = path.join(AUDIO_DIR, `${call.id}.${ext}`);
-      try {
-        await downloadToFile(url, dest);
-        if (fs.existsSync(dest) && fs.statSync(dest).size > 500) {
-          ok = true;
-          break;
-        }
-      } catch {
-        /* try next */
-      }
+    ext = "mp3";
+    dest = path.join(AUDIO_DIR, `${call.id}.${ext}`);
+    try {
+      await downloadMono(apiKey, call.id, dest);
+      ok = fs.existsSync(dest) && fs.statSync(dest).size > 500;
+    } catch (err) {
+      console.warn(`mono-recording failed for ${call.id}: ${err.message || err}`);
+      ok = false;
     }
   }
 

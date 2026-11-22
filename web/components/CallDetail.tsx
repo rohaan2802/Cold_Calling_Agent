@@ -179,8 +179,7 @@ export default function CallDetail({ id }: { id: string }) {
         <p className="lede">
           {call.startedAt ? new Date(call.startedAt).toLocaleString() : "—"} ·{" "}
           {formatDuration(getDurationSeconds(call))} · {getOutcome(call)}
-          {isDemoCall(call) ? " · Sample" : ""} · ({getRecordingSource(call)}){" "}
-          {recordingSourceLabel(getRecordingSource(call))}
+          {isDemoCall(call) ? " · Sample" : ""} · ({getRecordingSource(call)})
         </p>
       </div>
 
@@ -242,7 +241,7 @@ export default function CallDetail({ id }: { id: string }) {
             <div className="meta-inline">
               <dt>Storage</dt>
               <dd>
-                ({getRecordingSource(call)}) {recordingSourceLabel(getRecordingSource(call))}
+                ({getRecordingSource(call)})
                 {isDemoCall(call) ? " · demo sample" : ""}
               </dd>
             </div>
