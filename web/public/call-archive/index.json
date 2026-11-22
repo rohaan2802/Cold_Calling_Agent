@@ -1,23 +1,6 @@
 {
-  "updatedAt": "2026-11-22T19:03:54.543Z",
+  "updatedAt": "2026-11-22T19:45:12.351Z",
   "calls": [
-    {
-      "id": "01a20471-a558-7003-a6ef-c01892f0974c",
-      "type": "webCall",
-      "status": "ended",
-      "endedReason": "customer-ended-call",
-      "startedAt": "2026-11-22T18:08:06.780Z",
-      "endedAt": "2026-11-22T18:08:29.474Z",
-      "createdAt": "2026-11-22T18:08:06.488Z",
-      "cost": 0.0246,
-      "customer": "",
-      "assistantId": "29ef7ba6-0642-442f-bb6e-8798734fd7a6",
-      "transcript": "Alex: Hi there.\nAlex: Are you there?\n",
-      "summary": "",
-      "recordingFile": "audio/01a20471-a558-7003-a6ef-c01892f0974c.mp3",
-      "archivedAt": "2026-11-22T18:52:52.606Z",
-      "source": "vapi-sync"
-    },
     {
       "id": "01a2046b-e2c7-7003-a6c8-57543810a18b",
       "type": "webCall",
