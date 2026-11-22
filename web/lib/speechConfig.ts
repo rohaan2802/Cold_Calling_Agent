@@ -6,8 +6,8 @@
 /** Casual pace — not rushed, not slow (1.0 feels fast on Elliot) */
 export const VOICE_SPEED = 0.8;
 
-/** Seconds between idle nudge / end steps */
-export const IDLE_STEP_SECONDS = 5;
+/** Seconds between idle nudge / end steps (VAPI speech.timeout hooks) */
+export const IDLE_STEP_SECONDS = 8;
 
 const KEYWORDS = [
   "Vantora",
@@ -166,26 +166,34 @@ export function isUserHangupRequest(text: string): boolean {
   return false;
 }
 
-/** Alex said a closing goodbye — hang up ~2s after (Roman + Urdu script) */
+/** Alex said a closing goodbye — hang up ~2s after (Roman + Urdu script).
+ * Keep this strict — mid-call “thanks” must NOT kill the conversation.
+ */
 export function isAssistantGoodbye(text: string): boolean {
   const raw = text.trim();
   if (!raw) return false;
   if (/اللہ\s*حافظ/.test(raw) || /خدا\s*حافظ/.test(raw)) return true;
 
   const t = raw.toLowerCase().replace(/\s+/g, " ").trim();
-  return (
+  // Explicit farewell only (not generic courtesy lines)
+  if (
     /\ballah\s*hafiz\b/.test(t) ||
     /\bkhuda\s*hafiz\b/.test(t) ||
     /\bkhudahafiz\b/.test(t) ||
     /\ballahhafiz\b/.test(t) ||
     /\bgoodbye\b/.test(t) ||
-    /\bgood\s*bye\b/.test(t) ||
-    /\bhave a great day\b/.test(t) ||
-    /\bit seems you.?re busy\b/.test(t) ||
-    /\blagta hai aap\b.*\bbusy\b/.test(t) ||
-    /\bthanks for your time\b/.test(t) ||
-    /\baapke time ka shukriya\b/.test(t)
-  );
+    /\bgood\s*bye\b/.test(t)
+  ) {
+    return true;
+  }
+  // Idle / end scripts (full closing lines)
+  if (/\bit seems you.?re busy\b/.test(t) && /\b(great day|goodbye|thanks)\b/.test(t)) {
+    return true;
+  }
+  if (/\blagta hai aap\b/.test(t) && /\bbusy\b/.test(t) && /\b(allah|shukriya|hafiz)\b/.test(t)) {
+    return true;
+  }
+  return false;
 }
 
 export function endCallPhrasesFor(language: "en" | "ur"): string[] {
@@ -282,7 +290,10 @@ export function speechCaptureOverrides(
     backgroundDenoisingEnabled: true,
     /** Never barge into the opening greeting */
     firstMessageInterruptionsEnabled: false,
-    silenceTimeoutSeconds: clientIdle ? 90 : 25,
+    // Long enough that thinking pauses do not kill the call
+    silenceTimeoutSeconds: clientIdle ? 180 : 45,
+    // Prefer VAPI speech.timeout hooks (keeps LLM turn-taking alive).
+    // clientManagedIdle=true clears hooks when the browser drives idle itself.
     hooks: clientIdle ? [] : idlePresenceHooks(language),
     clientMessages: ["transcript", "conversation-update", "speech-update"] as string[],
   };

@@ -18,7 +18,6 @@ import {
   IDLE_STEP_SECONDS,
   VOICE_SPEED,
   endCallPhrasesFor,
-  idleLines,
   isAssistantGoodbye,
   isUserHangupRequest,
   speechCaptureOverrides,
@@ -351,56 +350,63 @@ export default function TalkToAgent() {
   }
 
   /**
-   * After Alex finishes (or after an idle nudge): wait 5s.
-   * Step 0 → presence check · Step 1 → ask again · Step 2 → polite end.
-   * Live language ref picks EN / UR lines (never English while Urdu selected).
+   * Browser backup idle only — VAPI hooks handle normal presence checks.
+   * Do NOT use vapi.say() here (breaks the LLM response loop mid-call).
    */
   function armIdleTimer() {
     clearIdleTimer();
     if (!startedRef.current || endingRef.current) return;
 
+    // Safety net far above VAPI hooks (8s×3). If hooks fail, nudge via system msg.
     idleTimerRef.current = setTimeout(() => {
       const vapi = vapiRef.current;
       if (!vapi || endingRef.current || !startedRef.current) return;
 
-      const lines = idleLines(langRef.current === "urdu" ? "ur" : "en");
       const step = idleStepRef.current;
+      const lang = langRef.current === "urdu" ? "urdu" : "english";
+      const nudge =
+        lang === "urdu"
+          ? "User silent hai. Ek short Urdu line bolo: poochho ke wo line pe hain. English mat bolo."
+          : "User has been silent. Ask one short line if they are still there. Stay in English.";
 
-      if (step === 0) {
-        idleStepRef.current = 1;
+      if (step < 2) {
+        idleStepRef.current = step + 1;
         try {
-          vapi.say(lines.check1, false, true, true);
+          vapi.send({
+            type: "add-message",
+            message: { role: "system", content: nudge },
+          });
         } catch {
-          armIdleTimer();
+          /* ignore */
         }
+        armIdleTimer();
         return;
       }
 
-      if (step === 1) {
-        idleStepRef.current = 2;
-        try {
-          vapi.say(lines.check2, false, true, true);
-        } catch {
-          armIdleTimer();
-        }
-        return;
-      }
-
-      clearIdleTimer();
+      // Final backup end — still via model, not say()
       try {
-        vapi.say(lines.end, false, true, true);
+        vapi.send({
+          type: "add-message",
+          message: {
+            role: "system",
+            content:
+              lang === "urdu"
+                ? "User jawab nahi de rahe. Short Urdu mein shukriya + Allah hafiz bolo, phir endCall."
+                : "User is not responding. Say a short thanks and goodbye, then end the call.",
+          },
+        });
       } catch {
         /* ignore */
       }
-      // Full goodbye line first — hang up 2s after speech-end
-      scheduleCallEndAfterSpeech(2000);
-    }, IDLE_MS);
+      scheduleCallEndAfterSpeech(4000);
+    }, Math.max(IDLE_MS * 4, 25000));
   }
 
   function buildOverrides(lang: Lang) {
     const code = lang === "urdu" ? "ur" : "en";
-    // Client idle only — blocks base assistant English “Are you there?” hooks
-    const speech = speechCaptureOverrides(code, { clientManagedIdle: true });
+    // Language-correct VAPI idle hooks (EN/UR). Avoid client vapi.say() idle —
+    // that was breaking mid-call turn-taking (Alex goes silent after a nudge).
+    const speech = speechCaptureOverrides(code, { clientManagedIdle: false });
 
     if (lang === "urdu") {
       return {
@@ -599,9 +605,17 @@ export default function TalkToAgent() {
           const isFinal = message.transcriptType === "final";
 
           // Hangup / goodbye: act on partials too (faster; STT often finalizes late)
-          if (role === "You" && isUserHangupRequest(text)) {
+          if (role === "You") {
             resetIdleSteps();
-            forceHangupRef.current();
+            // User still talking → cancel a mistaken goodbye hangup
+            if (endingRef.current && !isUserHangupRequest(text) && text.trim().length >= 2) {
+              endingRef.current = false;
+              pendingEndAfterSpeechRef.current = false;
+              clearHangupDelay();
+            }
+            if (isUserHangupRequest(text)) {
+              forceHangupRef.current();
+            }
           }
           if (role === "Alex" && isAssistantGoodbye(text)) {
             onAssistantLineRef.current(text);
