@@ -48,5 +48,7 @@ jobs:
             echo "No archive changes"
           else
             git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "chore: archive call recordings (free permanent storage)"
-            git push
+            # main may move while the job runs — rebase then push
+            git pull --rebase origin main
+            git push origin HEAD:main
           fi

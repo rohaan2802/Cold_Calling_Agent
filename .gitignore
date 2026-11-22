@@ -38,3 +38,5 @@ call-logs/local/
 
 tsbuildinfo
 *.tsbuildinfo
+.vercel
+.env*
