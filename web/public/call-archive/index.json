@@ -1,6 +1,23 @@
 {
-  "updatedAt": "2026-11-22T22:55:20.289Z",
+  "updatedAt": "2026-11-22T22:56:38.561Z",
   "calls": [
+    {
+      "id": "01a20578-b5ad-799b-bbbd-de8f36bb9b2f",
+      "type": "webCall",
+      "status": "ended",
+      "endedReason": "customer-ended-call",
+      "startedAt": "2026-11-22T22:55:26.928Z",
+      "endedAt": "2026-11-22T22:55:49.389Z",
+      "createdAt": "2026-11-22T22:55:26.637Z",
+      "cost": 0.0261,
+      "customer": "",
+      "assistantId": "29ef7ba6-0642-442f-bb6e-8798734fd7a6",
+      "transcript": "Alex: Hey. Alex from Ventura. We help teams stop drowning in follow ups. Got a quick 30 seconds?\nProspect: No. I am busy.\nAlex: No sweat. I get it. Should I pencil in a\n",
+      "summary": "",
+      "recordingFile": "audio/01a20578-b5ad-799b-bbbd-de8f36bb9b2f.mp3",
+      "archivedAt": "2026-11-22T22:56:08.391Z",
+      "source": "vapi-sync"
+    },
     {
       "id": "01a20567-f257-7229-bcba-86cfb140764d",
       "type": "webCall",
