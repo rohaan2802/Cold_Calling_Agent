@@ -11,7 +11,6 @@ import {
 } from "@/lib/englishSystemPrompt";
 import {
   ENGLISH_LOCK,
-  URDU_LOCK_REINFORCE,
   URDU_REPLY_NUDGE,
   URDU_SYSTEM_PROMPT,
 } from "@/lib/urduSystemPrompt";
@@ -239,7 +238,11 @@ export default function TalkToAgent() {
     }
   }
 
-  /** If Urdu model goes mute after user speech, nudge once (system msg — not say-hook). */
+  /**
+   * Urdu freeze fix: system-only nudge does NOT restart TTS.
+   * If Alex stays mute after user speech, force a short Roman-Urdu `say`
+   * to unstick the voice pipeline, then keep listening.
+   */
   function armUrduReplyWatch() {
     clearUrduReplyWatch();
     if (langRef.current !== "urdu") return;
@@ -248,17 +251,32 @@ export default function TalkToAgent() {
       urduReplyWatchRef.current = null;
       const vapi = vapiRef.current;
       if (!vapi || endingRef.current || speakingRef.current) return;
-      if (urduNudgeCountRef.current >= 3) return;
+      if (urduNudgeCountRef.current >= 4) return;
+      const n = urduNudgeCountRef.current;
       urduNudgeCountRef.current += 1;
+      const rescueLines = [
+        "Theek hai, samajh gaya — follow-ups ab kaise karte hain?",
+        "Bilkul — main short rakhta hoon. Reminders kaise handle karte ho?",
+        "Achha, continue karte hain — tees seconds aur theek hai?",
+        "Mazrat, line clear nahi thi — ek short baat bolein, main sun raha hoon.",
+      ];
+      const line = rescueLines[Math.min(n, rescueLines.length - 1)];
       try {
-        vapi.send({
-          type: "add-message",
-          message: { role: "system", content: URDU_REPLY_NUDGE },
-        });
+        // Unstick frozen LLM/TTS — do NOT end call
+        vapi.say(line, false, true, false);
+        speakingRef.current = true;
+        setSpeaking(true);
       } catch {
-        /* ignore */
+        try {
+          vapi.send({
+            type: "add-message",
+            message: { role: "system", content: URDU_REPLY_NUDGE },
+          });
+        } catch {
+          /* ignore */
+        }
       }
-    }, 2800);
+    }, 2000);
   }
 
   function clearHangupDelay() {
@@ -373,9 +391,8 @@ export default function TalkToAgent() {
         model: {
           provider: "groq",
           model: "llama-3.3-70b-versatile",
-          // Slightly lower than EN — Urdu silence often came from over-creative empty turns
-          temperature: 0.48,
-          maxTokens: 180,
+          temperature: 0.4,
+          maxTokens: 160,
           messages: [{ role: "system", content: URDU_SYSTEM_PROMPT }],
         },
         voice: {
@@ -488,21 +505,20 @@ export default function TalkToAgent() {
     vapi.on("speech-end", () => {
       speakingRef.current = false;
       setSpeaking(false);
-      // Reinforce language lock AFTER opening finishes — keeps first audio fast
+      // English only: light lock reinforce after opening.
+      // Urdu: SKIP — mid-call system inject was stalling the next spoken turn.
       if (!lockSentRef.current && !firstSpeechDoneRef.current) {
         firstSpeechDoneRef.current = true;
         lockSentRef.current = true;
-        try {
-          const lang = langRef.current;
-          vapi.send({
-            type: "add-message",
-            message: {
-              role: "system",
-              content: lang === "urdu" ? URDU_LOCK_REINFORCE : ENGLISH_LOCK,
-            },
-          });
-        } catch {
-          /* ignore */
+        if (langRef.current === "english") {
+          try {
+            vapi.send({
+              type: "add-message",
+              message: { role: "system", content: ENGLISH_LOCK },
+            });
+          } catch {
+            /* ignore */
+          }
         }
       }
       if (pendingEndAfterSpeechRef.current) {

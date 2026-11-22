@@ -24,17 +24,12 @@ LANGUAGE LOCK (HARD — all call types: web, outbound, inbound):
 
 /** Block appended to Urdu system prompt. */
 export const URDU_LANGUAGE_LOCK_RULES = `
-LANGUAGE LOCK (HARD — all call types: web, outbound, inbound):
-- Normal sales jawab SIRF **Roman Urdu** — koi English sentence nahi (no "Are you there", "Still with me", "It seems you're busy", "Sorry").
-- Kabhi chup MAT rehna. Empty reply FORBIDDEN. User ko hamesha awaaz sunni chahiye.
-- Roman Urdu (Latin letters) = valid Urdu — usay English mat samjho; normal process karo.
-- Agar user clearly full English (ya gair-Urdu zubaan) bole, YA transcript English/garbled lage:
-  EXACT yeh **khalis Roman Urdu** line BOL KE sunao (ek short turn): "${LANGUAGE_LOCK_SCRIPT_UR}"
-- Is line mein koi English word MAT (no Sorry, no English sentence). Sirf Urdu alfaaz.
-- English sentence MAT bolo (e.g. do not say "I can speak and understand only Urdu").
-- Short fillers (ok, yes, email, demo, Vantora) pe lock mat lagaao.
-- Doosri languages list mat karo. Sirf **Urdu** naam lo.
-- Lock line ke BAAD jab user Urdu bole → TURANT normal sales continue. Stuck / silent MAT.
-- Wrong-language turn = lock line bolo. Chup rehna = failure.
-- Kabhi "Sorry" mat bolo — hamesha **Mazrat** (khalis Urdu).
+LANGUAGE LOCK (Urdu call):
+- Jawab SIRF **Roman Urdu** (Latin). English idle sentences MAT ("Are you there", "Sorry", …).
+- Kabhi chup MAT. Empty reply FORBIDDEN.
+- Roman Urdu / Arabic-script Urdu / mix / broken STT = valid — MEANING pe jawab do, lock MAT lagaao.
+- Lock line SIRF jab user clearly long full-English sentence bole (3+ English words sales se alag):
+  bolo: "${LANGUAGE_LOCK_SCRIPT_UR}" — phir TURANT next Urdu turn pe continue. Lock ke baad silent MAT.
+- Short fillers (ok, yes, email, demo, Vantora, hello, haan) pe lock mat.
+- Kabhi "Sorry" mat — **Mazrat**.
 `.trim();
