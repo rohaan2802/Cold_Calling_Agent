@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-22T23:12:28.720Z",
+  "updatedAt": "2026-11-22T23:15:32.535Z",
   "calls": [
     {
       "id": "01a20567-f257-7229-bcba-86cfb140764d",
@@ -30,13 +30,16 @@
       "endedAt": "2026-11-22T22:36:55.963Z",
       "createdAt": "2026-11-22T22:35:03.871Z",
       "cost": 0.1248,
-      "customer": "",
+      "customer": {
+        "name": "My Agent"
+      },
       "assistantId": "29ef7ba6-0642-442f-bb6e-8798734fd7a6",
       "transcript": "Alex: السلام علیکم، ایلکس، وینٹھورس آئے۔ Folum up سسان بناتے ہیں۔ 30 سیکنڈز مل سکتے ہیں؟\nProspect: مل سکتے ہیں مجھے اس کے بارے میں مزید جاننا ہے\nAlex: سیکھ ہے سماج کے آیا۔ follow ups اب کیسے کرتے ہیں؟\nProspect: میں فالو اپس مینولی کرتا ہوں\nAlex: بالکل، main شور رکھتا ہوں۔ remiders کیسے handlo کرتے ہو؟\nProspect: کالز کر کر کے\nAlex: اچھا، continue کرتے ہیں۔ تیس seconds اور ٹھیک ہے؟\nProspect: میرے پاس ابھی وقت نہیں ہے بعد میں کھول کر لینا\nAlex: سیکھ ہے۔ آپ کو کس وقت call کروں؟ معذرت، line clear نہیں تھی۔\nProspect: کل شام۔\nAlex: ایک short boat بولیں\nProspect: کل شام کو\nAlex: سیک۔ کھال شام کو کتنا وقت convenuent ہے۔ ہے؟ minute damo یا email details بھیج دون۔\nProspect: سات بجے۔ Email retail بھیج دو۔\nAlex: سیکھ ہے کل شام سات باجے call کروں گا email details ابھی بھیج رہا ہوں۔ کا free trial link اور پندرہ minute demo schedule۔ اور سوال؟\nProspect: اوکے اللہ حافظ۔\nAlex: ٹھیک ہے۔\nProspect: بائے بائے۔\nAlex: سیکھ ہے۔ آپ کے time کا شکریہ۔ اللہ حافظ۔\n",
       "summary": "",
       "recordingFile": "audio/01a20566-0d3f-7003-abfe-092d5fd9976f.mp3",
       "archivedAt": "2026-11-22T22:51:47.120Z",
-      "source": "vapi-sync"
+      "source": "vapi-sync",
+      "displayName": "My Agent"
     },
     {
       "id": "01a2055b-aba0-799b-ba5e-e0a0eaf0cc41",
