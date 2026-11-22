@@ -24,20 +24,21 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"
 
-      - name: Wait for VAPI recording to finalize
-        if: github.event_name == 'repository_dispatch'
-        run: sleep 45
-
-      - name: Sync archive from VAPI
+      # No fixed 45s sleep — script retries only if recordings are still pending.
+      - name: Sync archive from VAPI (fast)
         env:
           VAPI_API_KEY: ${{ secrets.VAPI_API_KEY }}
-          ARCHIVE_MAX_PAGES: "5"
+          ARCHIVE_MAX_PAGES: ${{ github.event_name == 'schedule' && '3' || '2' }}
+          ARCHIVE_FAST: "1"
+          ARCHIVE_RETRY_WAITS: ${{ github.event_name == 'schedule' && '' || '8,12' }}
         run: node scripts/archive-recordings.js
 
       - name: Commit archive if changed
@@ -49,7 +50,6 @@ jobs:
             echo "No archive changes"
           else
             git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "chore: archive call recordings (free permanent storage)"
-            # main may move while the job runs — rebase then push
             git pull --rebase origin main
             git push origin HEAD:main
           fi

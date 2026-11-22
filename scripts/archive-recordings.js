@@ -279,28 +279,49 @@ async function archiveOne(apiKey, call, existingIds) {
   return { skipped: false, row };
 }
 
-async function main() {
-  const apiKey = getApiKey();
-  fs.mkdirSync(AUDIO_DIR, { recursive: true });
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
-  const index = readIndex();
-  const byId = new Map(index.calls.map((c) => [c.id, c]));
-  const existingIds = new Set(byId.keys());
+function parseRetryWaits() {
+  const raw = process.env.ARCHIVE_RETRY_WAITS || "";
+  if (!raw.trim()) return [];
+  return raw
+    .split(",")
+    .map((x) => Number(x.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0)
+    .slice(0, 5);
+}
 
-  const deletedIds = readDeletedIds();
-  console.log(`Archive has ${existingIds.size} call(s). Fetching VAPI…`);
+async function syncOnce(apiKey, byId, existingIds, deletedIds, fast) {
   const live = await fetchAllCalls(apiKey);
   console.log(`VAPI returned ${live.length} call(s).`);
 
   let added = 0;
   let skipped = 0;
+  let pendingRecording = 0;
+
   for (const call of live) {
-    if (deletedIds.has(call.id)) { skipped += 1; continue; }
+    if (deletedIds.has(call.id)) {
+      skipped += 1;
+      continue;
+    }
+
+    // Fast path: ignore already-archived (no meta rewrite / no extra I/O)
+    if (fast && existingIds.has(call.id)) {
+      skipped += 1;
+      continue;
+    }
+
+    if (!hasRecording(call) && call.status === "ended") {
+      pendingRecording += 1;
+    }
+
     const result = await archiveOne(apiKey, call, existingIds);
     if (result.skipped) {
       skipped += 1;
-      // Refresh transcript/meta for real archives only — never mutate permanent demos
       if (
+        !fast &&
         result.reason === "already-archived" &&
         byId.has(call.id) &&
         !isPermanentDemo(call.id, byId.get(call.id))
@@ -322,7 +343,42 @@ async function main() {
     console.log(`Archived ${result.row.id} (${result.row.type || "call"})`);
   }
 
-  // Always keep permanent demos even if VAPI no longer has them
+  return { added, skipped, pendingRecording };
+}
+
+async function main() {
+  const apiKey = getApiKey();
+  fs.mkdirSync(AUDIO_DIR, { recursive: true });
+
+  const index = readIndex();
+  const byId = new Map(index.calls.map((c) => [c.id, c]));
+  const existingIds = new Set(byId.keys());
+  const deletedIds = readDeletedIds();
+  const fast = process.env.ARCHIVE_FAST === "1";
+  const retries = parseRetryWaits();
+
+  console.log(
+    `Archive has ${existingIds.size} call(s). Fetching VAPI… fast=${fast ? "yes" : "no"} pages=${process.env.ARCHIVE_MAX_PAGES || 10}`
+  );
+
+  let added = 0;
+  let skipped = 0;
+  let round = await syncOnce(apiKey, byId, existingIds, deletedIds, fast);
+  added += round.added;
+  skipped += round.skipped;
+
+  // Instead of a fixed 45s sleep: only wait/retry when ended calls still lack audio
+  for (const waitSec of retries) {
+    if (round.pendingRecording === 0) break;
+    console.log(
+      `Waiting ${waitSec}s for VAPI recordings to finalize (pending≈${round.pendingRecording})…`
+    );
+    await sleep(waitSec * 1000);
+    round = await syncOnce(apiKey, byId, existingIds, deletedIds, fast);
+    added += round.added;
+    skipped += round.skipped;
+  }
+
   const calls = [...byId.values()].sort((a, b) => {
     const ta = new Date(a.createdAt || a.startedAt || 0).getTime();
     const tb = new Date(b.createdAt || b.startedAt || 0).getTime();
