@@ -118,9 +118,16 @@ export default function CallHistory() {
     return { total: calls.length, demos, live, interested, callbacks };
   }, [calls]);
 
-  async function loadArchiveMeta() {
+  async function loadArchiveMeta(hard = false) {
     try {
-      const res = await fetch("/api/archive/sync", { credentials: "same-origin" });
+      const bust = hard ? `?hard=1&t=${Date.now()}` : "";
+      const res = await fetch(`/api/archive/sync${bust}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: hard
+          ? { "Cache-Control": "no-cache, no-store, must-revalidate", Pragma: "no-cache" }
+          : undefined,
+      });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data?.updatedAt) setArchiveUpdatedAt(String(data.updatedAt));
     } catch {
@@ -129,7 +136,7 @@ export default function CallHistory() {
   }
 
   async function load(isRefresh = false) {
-    // Hard data refresh without blanking the list / full page reload (no blink)
+    // Ctrl+F5-grade data refresh — never blank the list / never full page reload (no blink)
     if (isRefresh && refreshInFlightRef.current) {
       return refreshInFlightRef.current;
     }
@@ -140,15 +147,19 @@ export default function CallHistory() {
       if (!isRefresh) setError("");
       try {
         const bust = Date.now();
-        const res = await fetch(`/api/calls?hard=1&t=${bust}`, {
+        // Parallel: calls list + archive meta (hard bypass browser/CDN like Ctrl+F5)
+        const callsReq = fetch(`/api/calls?hard=1&t=${bust}`, {
           credentials: "same-origin",
-          cache: "no-store",
+          cache: "reload",
           headers: {
             "Cache-Control": "no-cache, no-store, must-revalidate",
             Pragma: "no-cache",
+            Expires: "0",
             "X-Vantora-Refresh": "hard",
           },
         });
+        const metaP = isRefresh ? loadArchiveMeta(true) : loadArchiveMeta(false);
+        const res = await callsReq;
         const data = await res.json().catch(() => ({}));
         if (!res.ok) {
           setError(friendlyUserError(data.error || userMsg("loadCalls")));
@@ -157,8 +168,8 @@ export default function CallHistory() {
         }
         const next = Array.isArray(data) ? data : [];
         const sig = callsSignature(next);
-        // Skip React paint when nothing meaningful changed — kills list blink
-        if (sig !== callsSigRef.current) {
+        // Hard refresh always applies list (badges/sources); soft load skips identical paint
+        if (isRefresh || sig !== callsSigRef.current) {
           callsSigRef.current = sig;
           startTransition(() => {
             setCalls(next);
@@ -170,10 +181,8 @@ export default function CallHistory() {
               });
             }
           });
-        } else if (isRefresh) {
-          setPage(1);
         }
-        void loadArchiveMeta();
+        await metaP;
       } catch (err) {
         setError(friendlyUserError(err));
       } finally {
@@ -401,7 +410,7 @@ export default function CallHistory() {
             aria-busy={refreshing}
             title="Hard-refresh call list + archive badges without reloading the page"
           >
-            Refresh
+            {refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>
