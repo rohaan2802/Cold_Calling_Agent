@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-11-22T23:08:19.099Z",
+  "updatedAt": "2026-11-22T23:12:28.720Z",
   "calls": [
     {
       "id": "01a20567-f257-7229-bcba-86cfb140764d",
@@ -10,13 +10,16 @@
       "endedAt": "2026-11-22T22:37:46.093Z",
       "createdAt": "2026-11-22T22:37:08.055Z",
       "cost": 0.0446,
-      "customer": "",
+      "customer": {
+        "name": "Call Agent By Self"
+      },
       "assistantId": "29ef7ba6-0642-442f-bb6e-8798734fd7a6",
       "transcript": "Alex: Hey. Alex from Ventura. We help teams stop drowning in follow ups. Got a quick 30 seconds?\nProspect: Now can you call back?\nAlex: Absolutely. I can set that up. What time works best for you for a quick callback?\nProspect: Tomorrow at 7PM.\nAlex: Got it. I'll give you a call tomorrow at 7PM. Looking forward to chatting then.\nProspect: Sure. Okay. Thank you so much. Bye bye.\nAlex: Got it. For your time.\n",
       "summary": "",
       "recordingFile": "audio/01a20567-f257-7229-bcba-86cfb140764d.mp3",
       "archivedAt": "2026-11-22T22:51:46.191Z",
-      "source": "vapi-sync"
+      "source": "vapi-sync",
+      "displayName": "Call Agent By Self"
     },
     {
       "id": "01a20566-0d3f-7003-abfe-092d5fd9976f",
