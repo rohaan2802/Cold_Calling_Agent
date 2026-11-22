@@ -1,12 +1,13 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+import VapiNoiseGuard from "@/components/VapiNoiseGuard";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Vantora — Cold-Calling AI Voice Agent",
+  title: "Vantora — Cold_Calling_Agent",
   description:
-    "Vantora live demo: talk to the AI cold-call agent, place outbound calls, and review recordings + transcripts.",
-  applicationName: "Vantora",
+    "Vantora Cold_Calling_Agent: live AI voice for outbound sales — browser calls, phone dialer, recordings, and transcripts in English and Urdu.",
+  applicationName: "Vantora Cold_Calling_Agent",
 };
 
 export const viewport: Viewport = {
@@ -21,13 +22,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
           href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&family=Syne:wght@600;700;800&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body>
+      <body suppressHydrationWarning>
+        <VapiNoiseGuard />
         <div className="shell">
           <header className="site-header">
             <Link href="/" className="brand">
@@ -47,7 +49,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </header>
           {children}
           <footer className="site-footer">
-            Vantora · Likva9 assessment · Recordings + transcripts per call · Recruiters: use Call Agent
+            Vantora · AI outbound voice · Permanent archive · Demo Samples · EN / Urdu
           </footer>
         </div>
       </body>

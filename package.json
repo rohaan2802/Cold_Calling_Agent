@@ -1,14 +1,17 @@
 {
-  "name": "cold-calling-ai-voice-agent",
+  "name": "cold_calling_agent",
   "version": "1.0.0",
-  "description": "Cold-calling AI voice agent for Likva9 technical assessment",
+  "description": "Vantora — Cold_Calling_Agent (web + outbound + permanent recording archive)",
   "private": true,
   "scripts": {
     "dev": "scripts\\run-dev.cmd",
     "dev:web": "scripts\\run-dev.cmd",
     "deploy:assistant": "node scripts/deploy-assistant.js",
     "sync:web-env": "node scripts/sync-web-env.js",
-    "add:groq": "node scripts/add-groq-credential.js"
+    "add:groq": "node scripts/add-groq-credential.js",
+    "archive:recordings": "node scripts/archive-recordings.js",
+    "archive:quick": "node scripts/archive-quick.js",
+    "seed:demo": "node scripts/seed-demo-calls.js"
   },
   "engines": {
     "node": ">=18"

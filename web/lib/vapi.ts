@@ -33,6 +33,11 @@ export type VapiCall = {
       time?: number;
     }>;
   };
+  /** Free seeded sample recording (no VAPI credits) */
+  demo?: boolean;
+  source?: string;
+  /** User-renamed label for history / detail */
+  displayName?: string;
 };
 
 export function getDurationSeconds(call: VapiCall): number | null {
@@ -147,6 +152,14 @@ export function getCallTypeLabel(call: VapiCall): string {
   return "Call Agent";
 }
 
+export function isDemoCall(call: VapiCall): boolean {
+  return (
+    call.id.startsWith("demo-") ||
+    Boolean(call.demo) ||
+    call.source === "demo-seed"
+  );
+}
+
 export function getOutcome(call: VapiCall): string {
   if (isDeletedCall(call)) return "Deleted";
 
@@ -191,6 +204,9 @@ export function getCallAgentNumber(
 
 /** Phone number for phone calls, or numbered Call Agent 1 / 2 / … */
 export function getCallLabel(call: VapiCall, allCalls: VapiCall[] = []): string {
+  const custom = (call.displayName || call.customer?.name || "").trim();
+  if (custom) return custom;
+
   const typeLabel = getCallTypeLabel(call);
 
   if (

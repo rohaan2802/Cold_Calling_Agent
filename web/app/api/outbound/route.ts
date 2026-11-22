@@ -74,7 +74,7 @@ export async function POST(req: Request) {
     if (!res.ok) {
       const raw = extractRawError(data?.message ?? data?.error ?? data);
       return NextResponse.json(
-        { error: friendlyUserError(raw || userMsg("genericStart")) },
+        { error: friendlyUserError(raw || userMsg("genericStart"), "start") },
         { status: res.status >= 400 && res.status < 600 ? res.status : 400 }
       );
     }
@@ -82,7 +82,7 @@ export async function POST(req: Request) {
     const reason = String(data?.endedReason || "");
     if (/insufficient-credits|daily-limit|error/i.test(reason)) {
       return NextResponse.json(
-        { error: friendlyUserError(reason) },
+        { error: friendlyUserError(reason, "start") },
         { status: 402 }
       );
     }
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
     return NextResponse.json(data);
   } catch (err) {
     return NextResponse.json(
-      { error: friendlyUserError(err) },
+      { error: friendlyUserError(err, "start") },
       { status: 500 }
     );
   }

@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import {
+  listArchivedAsVapiCalls,
+  mergeCallsPreferArchive,
+  readDeletedIds,
+} from "@/lib/archive";
+import {
   parseHiddenCallIds,
   shouldListInHistory,
   vapiFetch,
@@ -7,16 +12,10 @@ import {
 } from "@/lib/vapi";
 
 const PAGE_SIZE = 100;
-/** Walk enough VAPI pages that deleted stubs cannot hide older recordings */
 const MAX_PAGES = 8;
 const MAX_LISTED = 100;
 
-/**
- * VAPI `/call?limit=N` returns the newest N calls including deleted / failed
- * stubs. Filtering only that window made older recordings "fall off" the bottom
- * whenever a new call was created. Paginate until we have enough recorded rows.
- */
-async function fetchRecordedCalls(hidden: Set<string>): Promise<VapiCall[]> {
+async function fetchRecordedCalls(hidden: Set<string>, deleted: Set<string>): Promise<VapiCall[]> {
   const listed: VapiCall[] = [];
   let createdAtLt: string | undefined;
 
@@ -37,7 +36,8 @@ async function fetchRecordedCalls(hidden: Set<string>): Promise<VapiCall[]> {
     if (!raw.length) break;
 
     for (const c of raw) {
-      if (shouldListInHistory(c) && !hidden.has(c.id)) {
+      if (deleted.has(c.id) || hidden.has(c.id)) continue;
+      if (shouldListInHistory(c)) {
         listed.push(c);
         if (listed.length >= MAX_LISTED) return listed;
       }
@@ -54,7 +54,23 @@ async function fetchRecordedCalls(hidden: Set<string>): Promise<VapiCall[]> {
 export async function GET(req: Request) {
   try {
     const hidden = parseHiddenCallIds(req.headers.get("cookie"));
-    const calls = await fetchRecordedCalls(hidden);
+    const deleted = readDeletedIds();
+    const archived = listArchivedAsVapiCalls(hidden);
+
+    // Default: GitHub/archive files ONLY (no VAPI list = no 14-day expiry / no duplicates)
+    // Set HISTORY_INCLUDE_VAPI=1 only if you want live VAPI rows merged in.
+    const includeVapi = process.env.HISTORY_INCLUDE_VAPI === "1";
+
+    let live: VapiCall[] = [];
+    if (includeVapi) {
+      try {
+        live = await fetchRecordedCalls(hidden, deleted);
+      } catch (err) {
+        if (!archived.length) throw err;
+      }
+    }
+
+    const calls = mergeCallsPreferArchive(archived, live, deleted).slice(0, MAX_LISTED);
 
     return NextResponse.json(calls, {
       headers: {

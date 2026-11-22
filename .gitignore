@@ -33,5 +33,8 @@ logs/
 recordings/
 call-logs/local/
 
+# Permanent free archive IS committed (served on free Vercel after VAPI expiry)
+# Do not ignore: web/public/call-archive/
+
 tsbuildinfo
 *.tsbuildinfo

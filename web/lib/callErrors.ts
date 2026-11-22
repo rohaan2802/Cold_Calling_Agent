@@ -27,6 +27,8 @@ const MSG = {
     "Could not load call history. Please refresh and try again.",
   callNotFound:
     "This call was not found or was deleted.",
+  callConnectFail:
+    "Could not connect the call. Check microphone permission and VAPI credits, then try again.",
   deleteFail:
     "Could not delete this call. Please try again.",
   recordingUnavailable:
@@ -116,8 +118,17 @@ export function validateOutboundPhone(input: string): { ok: true; e164: string }
   return { ok: true, e164 };
 }
 
-/** Always returns a short, human message — never leaks field names like customer.number */
-export function friendlyUserError(raw: unknown): string {
+export type ErrorContext = "start" | "history" | "generic";
+
+/**
+ * Always returns a short, human message — never leaks field names like customer.number.
+ * Use context "start" for web/outbound/inbound dial attempts so VAPI's bare
+ * "Call not found" never looks like a deleted history recording.
+ */
+export function friendlyUserError(
+  raw: unknown,
+  context: ErrorContext = "generic"
+): string {
   const msg = extractRawError(raw).toLowerCase();
 
   if (!msg) return MSG.genericFail;
@@ -192,8 +203,56 @@ export function friendlyUserError(raw: unknown): string {
     return MSG.configMissing;
   }
 
-  if (msg.includes("not found") || msg.includes("deleted") || msg.includes("404")) {
-    return MSG.callNotFound;
+  // Assistant / phone config 404s — not "deleted history call"
+  if (
+    msg.includes("assistant") &&
+    (msg.includes("not found") || msg.includes("404") || msg.includes("invalid"))
+  ) {
+    return MSG.configMissing;
+  }
+
+  if (
+    msg.includes("phone number") &&
+    (msg.includes("not found") || msg.includes("404") || msg.includes("invalid"))
+  ) {
+    return MSG.configMissing;
+  }
+
+  // Daily.co / VAPI transport noise when a web call fails to stay up
+  if (
+    msg.includes("meeting has ended") ||
+    msg.includes("meeting ended") ||
+    msg.includes("meeting ended in error") ||
+    msg.includes("exiting meeting") ||
+    msg.includes("room was deleted") ||
+    msg.includes("room deleted") ||
+    msg.includes("ejected") ||
+    msg.includes("ejection")
+  ) {
+    return MSG.callConnectFail;
+  }
+
+  // Web / outbound / inbound dial: never show history "deleted call" copy
+  if (context === "start") {
+    if (
+      (msg.includes("call") || msg.includes("meeting") || msg.includes("room")) &&
+      (msg.includes("not found") || msg.includes("deleted") || msg.includes("404") || msg.includes("no longer"))
+    ) {
+      return MSG.callConnectFail;
+    }
+  } else {
+    // History / detail pages only
+    if (
+      msg.includes("this call was") ||
+      msg.includes("was deleted") ||
+      msg.includes("no longer available") ||
+      (msg.includes("recording") && msg.includes("deleted")) ||
+      /^call not found\.?$/.test(msg.trim()) ||
+      msg.includes("call not in permanent archive") ||
+      (msg.includes("call") && (msg.includes("not found") || msg.includes("was deleted")))
+    ) {
+      return MSG.callNotFound;
+    }
   }
 
   if (msg.includes("recording") && (msg.includes("unavailable") || msg.includes("not ready") || msg.includes("empty"))) {
@@ -204,7 +263,7 @@ export function friendlyUserError(raw: unknown): string {
     return MSG.recordingPlay;
   }
 
-  if (msg.includes("delete")) {
+  if (msg.includes("delete") && context !== "start") {
     return MSG.deleteFail;
   }
 
@@ -220,12 +279,12 @@ export function friendlyUserError(raw: unknown): string {
     msg.includes("{") ||
     msg.includes("hot tip")
   ) {
-    return MSG.genericStart;
+    return context === "start" ? MSG.callConnectFail : MSG.genericStart;
   }
 
   // Short plain sentences can pass through; long/tech dumps get replaced
   if (msg.length > 180 || /https?:\/\//i.test(msg) || msg.includes(" at ")) {
-    return MSG.genericFail;
+    return context === "start" ? MSG.callConnectFail : MSG.genericFail;
   }
 
   // Capitalize first letter of a safe short message
@@ -234,7 +293,7 @@ export function friendlyUserError(raw: unknown): string {
     return cleaned.endsWith(".") ? cleaned : `${cleaned}.`;
   }
 
-  return MSG.genericFail;
+  return context === "start" ? MSG.callConnectFail : MSG.genericFail;
 }
 
 /** @deprecated use friendlyUserError */

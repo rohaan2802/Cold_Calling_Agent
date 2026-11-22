@@ -8,14 +8,33 @@ import {
   validateOutboundPhone,
 } from "@/lib/callErrors";
 
+const DIALER_NOTES = [
+  {
+    title: "When to use",
+    body: "Real phone checks — confirm Alex rings a US (+1) mobile or landline end-to-end.",
+  },
+  {
+    title: "Credits & limits",
+    body: "Each outbound minute uses VAPI credits. Free lines often cap daily attempts — prefer Call Agent for demos.",
+  },
+  {
+    title: "After the call",
+    body: "Recording lands on VAPI first. Use Pull latest recordings so it appears in permanent Call History.",
+  },
+  {
+    title: "Compliance",
+    body: "Only dial numbers you are allowed to contact. Respect do-not-call and quiet hours.",
+  },
+];
+
 export default function OutboundDialer() {
   const [number, setNumber] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  useAutoDismiss(error, () => setError(""), 5000);
-  useAutoDismiss(message, () => setMessage(""), 5000);
+  useAutoDismiss(error, () => setError(""));
+  useAutoDismiss(message, () => setMessage(""));
 
   async function placeCall(e: React.FormEvent) {
     e.preventDefault();
@@ -45,14 +64,14 @@ export default function OutboundDialer() {
       }
 
       if (!res.ok) {
-        setError(friendlyUserError(data.error || userMsg("genericStart")));
+        setError(friendlyUserError(data.error || userMsg("genericStart"), "start"));
         return;
       }
 
       setMessage(userMsg("outboundStarted"));
       setNumber("");
     } catch (err) {
-      setError(friendlyUserError(err));
+      setError(friendlyUserError(err, "start"));
     } finally {
       setLoading(false);
     }
@@ -61,13 +80,22 @@ export default function OutboundDialer() {
   return (
     <section className="panel dialer-panel">
       <div className="panel-head">
-        <p className="eyebrow">Real cold call</p>
-        <h2>Outbound call</h2>
+        <p className="eyebrow">Live telephony</p>
+        <h2>Outbound dialer</h2>
         <p className="lede">
-          Places a real phone call to a US (+1) number such as TextMe. Free line: limited outbound
-          attempts per day.
+          Dial a real US (+1) number through your VAPI phone line. Best for a short live telephony
+          check after you have tried Call Agent.
         </p>
       </div>
+
+      <ul className="panel-notes">
+        {DIALER_NOTES.map((note) => (
+          <li key={note.title}>
+            <strong>{note.title}</strong>
+            <span>{note.body}</span>
+          </li>
+        ))}
+      </ul>
 
       <form className="dialer-form" onSubmit={placeCall} noValidate>
         <label htmlFor="phone">Phone number (with country code)</label>
@@ -86,7 +114,7 @@ export default function OutboundDialer() {
             {loading ? "Calling…" : "Call now"}
           </button>
         </div>
-        <p className="hint">Example: +1 415 555 2671</p>
+        <p className="hint">Example: +1 415 555 2671 · E.164 format preferred</p>
       </form>
 
       {message && <p className="ok-box">{message}</p>}

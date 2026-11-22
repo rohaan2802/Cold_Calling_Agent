@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Vapi from "@vapi-ai/web";
 import { useAutoClearWhen, useAutoDismiss } from "@/hooks/useAutoDismiss";
-import { friendlyUserError, userMsg } from "@/lib/callErrors";
+import { extractRawError, friendlyUserError, userMsg } from "@/lib/callErrors";
 import {
   ENGLISH_END_MESSAGE,
   ENGLISH_FIRST_MESSAGE,
@@ -29,6 +29,25 @@ type Lang = "english" | "urdu";
 
 const IDLE_MS = IDLE_STEP_SECONDS * 1000;
 
+const CALL_AGENT_NOTES = [
+  {
+    title: "Best for demos",
+    body: "Talk in the browser with your mic — no phone number needed. Uses far fewer credits than outbound.",
+  },
+  {
+    title: "Language lock",
+    body: "Pick English or Urdu before you start. That language stays locked for the whole call.",
+  },
+  {
+    title: "Hangup & idle",
+    body: "Say goodbye / call cut to end cleanly. If you go quiet, Alex checks in then ends politely.",
+  },
+  {
+    title: "After the call",
+    body: "Recording saves to VAPI first. Pull latest recordings to keep it in permanent Call History.",
+  },
+];
+
 const OPENINGS: Record<Lang, string> = {
   english: ENGLISH_FIRST_MESSAGE,
   urdu:
@@ -42,55 +61,47 @@ const END_MSG: Record<Lang, string> = {
 
 const UI = {
   english: {
-    eyebrow: "Recruiter free test",
+    eyebrow: "Browser voice · no phone needed",
     title: "Call Agent",
-    lede: "Choose English or Urdu, then start the call. Language stays locked for that call.",
+    lede: "Choose English or Urdu, then start. Language stays locked for the whole call.",
     langLabel: "Language",
     lockedLive: "Locked for this call",
     start: "Call Agent (English)",
     end: "End call",
     loading: "Loading…",
     ready: "Ready · English selected",
-    endedStatus: "Conversation ended — recording saved in Call History",
+    endedStatus: "Call ended — recording will land in Call History after archive",
     speaking: "Alex is speaking…",
     listening: "Listening…",
     selectInfo: "English selected — the call will start in English.",
-    endedOk: "Call finished normally. Open Call History to play the recording.",
+    endedOk: "Call finished. Open Call History (or Sync archive) to play the recording.",
   },
   urdu: {
-    eyebrow: "Recruiter free test",
+    eyebrow: "Browser voice · phone ki zaroorat nahi",
     title: "Call Agent",
-    lede: "Pehle English ya Urdu choose karein, phir call start karein. Is call ke liye language lock rehti hai.",
+    lede: "Pehle English ya Urdu choose karein, phir call start karein. Language poori call ke liye lock rehti hai.",
     langLabel: "Language",
     lockedLive: "Is call ke liye lock",
     start: "Call Agent (Urdu)",
     end: "End call",
     loading: "Loading…",
     ready: "Ready · Urdu selected",
-    endedStatus: "Call khatam — recording Call History mein save hai",
+    endedStatus: "Call khatam — recording archive ke baad History mein aati hai",
     speaking: "Alex bol raha hai…",
     listening: "Sun raha hai… boliye",
-    selectInfo: "Urdu selected — the call will start in Urdu.",
-    endedOk: "Call theek se khatam hui. Recording Call History se sunain.",
+    selectInfo: "Urdu selected — call Urdu mein start hogi.",
+    endedOk: "Call theek se khatam hui. History kholo ya Sync archive dabao recording ke liye.",
   },
 } as const;
 
 function isBenignHangupError(message: string): boolean {
-  return /meeting has ended|meeting ended|ejected|ejection|left the call|call ended|connection.*closed|websocket.*close|daily|hangup|ended reason|bye/i.test(
+  return /meeting has ended|meeting ended in error|meeting ended|exiting meeting|room was deleted|room deleted|ejected|ejection|left the call|call ended|connection.*closed|websocket.*close|daily\.co|hangup|ended reason|bye/i.test(
     message
   );
 }
 
 function errorText(e: unknown): string {
-  if (typeof e === "string") return e;
-  if (typeof e === "object" && e && "message" in e) {
-    return String((e as { message: string }).message);
-  }
-  try {
-    return JSON.stringify(e);
-  } catch {
-    return "";
-  }
+  return extractRawError(e);
 }
 
 type ConvMsg = { role?: string; message?: string; content?: string };
@@ -141,10 +152,53 @@ export default function TalkToAgent() {
   const [info, setInfo] = useState("");
   const [language, setLanguage] = useState<Lang>("english");
   const [transcript, setTranscript] = useState<TranscriptLine[]>([]);
+  const [elapsedSec, setElapsedSec] = useState(0);
+  const callStartedAtRef = useRef<number | null>(null);
 
   const publicKey = process.env.NEXT_PUBLIC_VAPI_PUBLIC_KEY || "";
   const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID || "";
   const copy = UI[language];
+
+  function notifyHistoryRefresh() {
+    try {
+      window.dispatchEvent(new CustomEvent("vantora:call-ended"));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function formatElapsed(total: number): string {
+    const m = Math.floor(total / 60);
+    const s = total % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("vantora_call_lang");
+      if (saved === "english" || saved === "urdu") {
+        setLanguage(saved);
+        langRef.current = saved;
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!active) {
+      callStartedAtRef.current = null;
+      return;
+    }
+    callStartedAtRef.current = Date.now();
+    setElapsedSec(0);
+    const t = setInterval(() => {
+      const start = callStartedAtRef.current;
+      if (!start) return;
+      setElapsedSec(Math.floor((Date.now() - start) / 1000));
+    }, 1000);
+    return () => clearInterval(t);
+  }, [active]);
 
   const LIVE_VOICE_GAIN = 5.5;
 
@@ -419,8 +473,8 @@ export default function TalkToAgent() {
     }
   }
 
-  useAutoDismiss(error, () => setError(""), 5000);
-  useAutoDismiss(info, () => setInfo(""), 5000);
+  useAutoDismiss(error, () => setError(""));
+  useAutoDismiss(info, () => setInfo(""));
   useAutoClearWhen(ended && !active, () => {
     setEnded(false);
     setTranscript([]);
@@ -509,6 +563,7 @@ export default function TalkToAgent() {
       if (startedRef.current) {
         setEnded(true);
         setError("");
+        notifyHistoryRefresh();
       }
       startedRef.current = false;
     });
@@ -589,6 +644,20 @@ export default function TalkToAgent() {
         tearDownVoiceBoost();
         setEnded(true);
         setError("");
+        notifyHistoryRefresh();
+        return;
+      }
+
+      // Failed before/during connect — show connect help, never "call deleted"
+      if (!hadSession && isBenignHangupError(msg)) {
+        endingRef.current = true;
+        resetIdleSteps();
+        startedRef.current = false;
+        setActive(false);
+        setSpeaking(false);
+        tearDownVoiceBoost();
+        setEnded(false);
+        setError(userMsg("callConnectFail"));
         return;
       }
 
@@ -599,7 +668,7 @@ export default function TalkToAgent() {
       setSpeaking(false);
       tearDownVoiceBoost();
       setEnded(false);
-      setError(friendlyUserError(msg || userMsg("mic")));
+      setError(friendlyUserError(msg || userMsg("mic"), "start"));
     });
 
     setReady(true);
@@ -620,6 +689,11 @@ export default function TalkToAgent() {
     if (next === language) return;
     setLanguage(next);
     langRef.current = next;
+    try {
+      localStorage.setItem("vantora_call_lang", next);
+    } catch {
+      /* ignore */
+    }
     setEnded(false);
     setInfo(UI[next].selectInfo);
   }
@@ -650,8 +724,13 @@ export default function TalkToAgent() {
       startedRef.current = false;
       setActive(false);
       setEnded(false);
-      const msg = e instanceof Error ? e.message : userMsg("mic");
-      setError(friendlyUserError(msg));
+      const msg = errorText(e) || (e instanceof Error ? e.message : "");
+      // Instant Daily/VAPI teardown should not look like "history call deleted"
+      if (isBenignHangupError(msg)) {
+        setError(userMsg("callConnectFail"));
+        return;
+      }
+      setError(friendlyUserError(msg || userMsg("mic"), "start"));
     }
   }
 
@@ -686,6 +765,17 @@ export default function TalkToAgent() {
         {active && <span className="lang-live">{copy.lockedLive}</span>}
       </div>
 
+      {!active && transcript.length === 0 && (
+        <ul className="panel-notes">
+          {CALL_AGENT_NOTES.map((note) => (
+            <li key={note.title}>
+              <strong>{note.title}</strong>
+              <span>{note.body}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
       <div className={`pulse-wrap ${active ? "live" : ""} ${speaking ? "speaking" : ""}`}>
         <button
           type="button"
@@ -699,8 +789,8 @@ export default function TalkToAgent() {
           {!ready && copy.loading}
           {ready && !active && !ended && copy.ready}
           {ready && !active && ended && copy.endedStatus}
-          {active && speaking && copy.speaking}
-          {active && !speaking && copy.listening}
+          {active && speaking && `${copy.speaking} · ${formatElapsed(elapsedSec)}`}
+          {active && !speaking && `${copy.listening} · ${formatElapsed(elapsedSec)}`}
         </p>
       </div>
 
@@ -710,6 +800,24 @@ export default function TalkToAgent() {
 
       {transcript.length > 0 && (
         <div className="live-transcript">
+          <div className="row between" style={{ marginBottom: "0.65rem" }}>
+            <p className="eyebrow" style={{ margin: 0 }}>
+              Live transcript
+            </p>
+            <button
+              type="button"
+              className="ghost-btn sm"
+              onClick={() => {
+                const text = transcript.map((l) => `${l.role}: ${l.text}`).join("\n");
+                void navigator.clipboard.writeText(text).then(
+                  () => setInfo("Live transcript copied."),
+                  () => setError("Could not copy transcript.")
+                );
+              }}
+            >
+              Copy
+            </button>
+          </div>
           {transcript.map((line, i) => (
             <p key={`${line.role}-${i}-${line.text.slice(0, 12)}`}>
               <strong>{line.role}:</strong> {line.text}

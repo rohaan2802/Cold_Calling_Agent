@@ -1,0 +1,51 @@
+name: Archive recordings (free forever)
+
+# VAPI free retention ~14 days. Hourly cron is plenty safe.
+# repository_dispatch = near-immediate after call ends (webhook / Sync button).
+on:
+  schedule:
+    - cron: "15 * * * *"
+  workflow_dispatch:
+  repository_dispatch:
+    types: [archive-recordings]
+  push:
+    paths:
+      - "scripts/archive-recordings.js"
+      - ".github/workflows/archive-recordings.yml"
+
+permissions:
+  contents: write
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Wait for VAPI recording to finalize
+        if: github.event_name == 'repository_dispatch'
+        run: sleep 45
+
+      - name: Sync archive from VAPI
+        env:
+          VAPI_API_KEY: ${{ secrets.VAPI_API_KEY }}
+          ARCHIVE_MAX_PAGES: "5"
+        run: node scripts/archive-recordings.js
+
+      - name: Commit archive if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add web/public/call-archive || true
+          if git diff --staged --quiet; then
+            echo "No archive changes"
+          else
+            git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "chore: archive call recordings (free permanent storage)"
+            git push
+          fi

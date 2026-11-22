@@ -1,24 +1,93 @@
+import fs from "fs";
 import { NextResponse } from "next/server";
+import { findArchiveAudioFile, findArchivedCall } from "@/lib/archive";
 import { isDeletedCall, vapiFetch } from "@/lib/vapi";
 
 type Params = { params: Promise<{ id: string }> };
 
+function streamLocalFile(
+  filePath: string,
+  contentType: string,
+  rangeHeader: string | null
+) {
+  const stat = fs.statSync(filePath);
+  const size = stat.size;
+
+  if (rangeHeader) {
+    const m = /bytes=(\d*)-(\d*)/.exec(rangeHeader);
+    if (m) {
+      const start = m[1] ? parseInt(m[1], 10) : 0;
+      const end = m[2] ? parseInt(m[2], 10) : size - 1;
+      if (start <= end && start < size) {
+        const chunk = fs.readFileSync(filePath).subarray(start, end + 1);
+        return new NextResponse(chunk, {
+          status: 206,
+          headers: {
+            "Content-Type": contentType,
+            "Content-Length": String(chunk.length),
+            "Content-Range": `bytes ${start}-${end}/${size}`,
+            "Accept-Ranges": "bytes",
+            "Cache-Control": "public, max-age=86400, immutable",
+          },
+        });
+      }
+    }
+  }
+
+  const buf = fs.readFileSync(filePath);
+  return new NextResponse(buf, {
+    status: 200,
+    headers: {
+      "Content-Type": contentType,
+      "Content-Length": String(size),
+      "Accept-Ranges": "bytes",
+      "Cache-Control": "public, max-age=86400, immutable",
+    },
+  });
+}
+
 /**
- * Stream recording bytes ASAP — avoid double VAPI round-trips and full in-memory buffer when possible.
+ * Prefer free permanent archive, then VAPI (which expires ~14 days on free tier).
  */
 export async function GET(req: Request, { params }: Params) {
   try {
     const { id } = await params;
-    const apiKey = process.env.VAPI_API_KEY;
     const range = req.headers.get("range");
 
+    // 1) Permanent free archive (GitHub/Vercel static — never expires)
+    const local = findArchiveAudioFile(id);
+    if (local) {
+      return streamLocalFile(local.path, local.contentType, range);
+    }
+
+    const archived = findArchivedCall(id);
+    if (archived?.recordingFile) {
+      // Deployed static fallback
+      const url = archived.recordingFile.startsWith("/")
+        ? archived.recordingFile
+        : `/call-archive/${archived.recordingFile}`;
+      return NextResponse.redirect(new URL(url, req.url), 302);
+    }
+
+    // Archive-only history: do not wait on slow VAPI for missing audio
+    if (process.env.HISTORY_INCLUDE_VAPI !== "1") {
+      return NextResponse.json(
+        {
+          error:
+            "Recording not in permanent archive. Run: npm run archive:recordings (or set HISTORY_INCLUDE_VAPI=1).",
+        },
+        { status: 404 }
+      );
+    }
+
+    const apiKey = process.env.VAPI_API_KEY;
     if (!apiKey) {
       return NextResponse.json({ error: "VAPI_API_KEY missing" }, { status: 500 });
     }
 
     const auth = { Authorization: `Bearer ${apiKey}` };
 
-    // Fast path: mono-recording first (no extra /call meta fetch)
+    // 2) Fast path: mono-recording from VAPI
     const mono = await fetch(`https://api.vapi.ai/call/${id}/mono-recording`, {
       headers: {
         ...auth,
@@ -46,7 +115,7 @@ export async function GET(req: Request, { params }: Params) {
       }
     }
 
-    // Fallback: call artifact URLs (one meta fetch)
+    // 3) Fallback: call artifact URLs
     const callRes = await vapiFetch(`/call/${id}`);
     if (!callRes.ok) {
       return NextResponse.json({ error: "Call not found" }, { status: callRes.status });
@@ -98,7 +167,7 @@ export async function GET(req: Request, { params }: Params) {
     return NextResponse.json(
       {
         error:
-          "Recording not available yet. Wait 30–60s after the call ends, then refresh.",
+          "Recording not available. If this call is older than ~14 days it may have expired on VAPI — run archive sync earlier next time.",
       },
       { status: 404 }
     );

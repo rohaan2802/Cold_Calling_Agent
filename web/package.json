@@ -1,5 +1,5 @@
 {
-  "name": "cold-calling-web",
+  "name": "cold_calling_agent_web",
   "version": "1.0.0",
   "private": true,
   "scripts": {
@@ -10,7 +10,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@vapi-ai/web": "^2.3.8",
+    "@vapi-ai/web": "^3.1.1",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
