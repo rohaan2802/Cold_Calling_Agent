@@ -28,6 +28,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          # Prefer owner PAT so archive commits are authored as rohaan2802
+          token: ${{ secrets.ARCHIVE_GITHUB_TOKEN || secrets.GITHUB_TOKEN }}
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -45,9 +47,14 @@ jobs:
         run: node scripts/archive-recordings.js
 
       - name: Commit archive if changed
+        env:
+          GIT_AUTHOR_NAME: rohaan2802
+          GIT_AUTHOR_EMAIL: m.rohaanarshad@gmail.com
+          GIT_COMMITTER_NAME: rohaan2802
+          GIT_COMMITTER_EMAIL: m.rohaanarshad@gmail.com
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "rohaan2802"
+          git config user.email "m.rohaanarshad@gmail.com"
           # porcelain is much faster than diff/add on the whole audio tree
           CHANGED="$(git status --porcelain -- web/public/call-archive || true)"
           if [ -z "$CHANGED" ]; then
@@ -63,7 +70,7 @@ jobs:
           if git diff --staged --quiet; then
             echo "No staged archive changes"
           else
-            git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "chore: archive call recordings (free permanent storage)"
+            git commit -m "chore: archive call recordings (free permanent storage)"
             git pull --rebase origin main
             git push origin HEAD:main
           fi

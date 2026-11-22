@@ -726,7 +726,7 @@ Client / lead intake (form, Excel upload, CRM, WhatsApp)
 | “Call cut” doesn’t hang up | Hard refresh live site; say clearly “call cut kr do”; client must detect hangup (see `speechConfig.ts`) |
 | Stays open after Allah hafiz | Should hard-stop ~2s after goodbye; if not, hard refresh — check `TalkToAgent` hangup timers |
 | English “Are you there?” on Urdu call | Web uses client-managed idle; patch base assistant hooks empty (`patch-assistant-efficient.js`) |
-| Node not found in Cursor | Use `scripts/run-dev.cmd` / `.vscode` Node path |
+| Node not found in the editor terminal | Use `scripts/run-dev.cmd` / `.vscode` Node path |
 | Favicon / icon | Source file: `web/app/icon.svg` (browser tab icon) |
 
 ---

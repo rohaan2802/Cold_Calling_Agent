@@ -1,5 +1,5 @@
 @echo off
-REM Always put Node on PATH for this session (fixes Cursor/VS Code "node not found")
+REM Always put Node on PATH for this session (fixes editor terminal "node not found")
 set "PATH=C:\Program Files\nodejs;%PATH%"
 
 cd /d "%~dp0.."
@@ -7,7 +7,7 @@ cd /d "%~dp0.."
 where node >nul 2>&1
 if errorlevel 1 (
   echo Node.js not found at "C:\Program Files\nodejs"
-  echo Install Node LTS from https://nodejs.org and restart Cursor.
+  echo Install Node LTS from https://nodejs.org and reopen the terminal.
   pause
   exit /b 1
 )
