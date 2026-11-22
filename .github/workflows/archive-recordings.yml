@@ -45,9 +45,20 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add web/public/call-archive || true
-          if git diff --staged --quiet; then
+          # Fast path: never `git add` the whole audio tree when nothing changed
+          # (that was taking ~6 minutes hashing unchanged wav/mp3 files).
+          if git diff --quiet HEAD -- web/public/call-archive \
+            && [ -z "$(git ls-files --others --exclude-standard -- web/public/call-archive)" ]; then
             echo "No archive changes"
+            exit 0
+          fi
+          git add -- web/public/call-archive/index.json web/public/call-archive/deleted.json
+          # Only stage new/modified audio (not re-hash every file unnecessarily)
+          git add --update -- web/public/call-archive/audio || true
+          git ls-files --others --exclude-standard -- web/public/call-archive/audio \
+            | while IFS= read -r f; do git add -- "$f"; done
+          if git diff --staged --quiet; then
+            echo "No staged archive changes"
           else
             git commit --trailer "Co-authored-by: Cursor <cursoragent@cursor.com>" -m "chore: archive call recordings (free permanent storage)"
             git pull --rebase origin main

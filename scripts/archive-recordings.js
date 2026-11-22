@@ -384,7 +384,27 @@ async function main() {
     const tb = new Date(b.createdAt || b.startedAt || 0).getTime();
     return tb - ta;
   });
-  writeIndex(calls);
+
+  // Avoid rewriting index.json on no-op runs (forced slow git add + empty redeploys)
+  const sig = (list) =>
+    JSON.stringify(
+      list.map((c) => ({
+        id: c.id,
+        summary: c.summary || "",
+        transcript: c.transcript || "",
+        endedReason: c.endedReason || "",
+        status: c.status || "",
+        recordingFile: c.recordingFile || "",
+      }))
+    );
+  const indexChanged = added > 0 || sig(index.calls) !== sig(calls);
+
+  if (indexChanged) {
+    writeIndex(calls);
+    console.log("Index updated.");
+  } else {
+    console.log("No archive changes — skipped index write.");
+  }
 
   const demoCount = calls.filter((c) => isPermanentDemo(c.id, c)).length;
   console.log(`\nDone. added=${added} skipped=${skipped} totalArchived=${calls.length} permanentDemos=${demoCount}`);
