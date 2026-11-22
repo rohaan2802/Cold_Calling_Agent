@@ -36,6 +36,8 @@ export type VapiCall = {
   /** Free seeded sample recording (no VAPI credits) */
   demo?: boolean;
   source?: string;
+  /** Set when permanently archived (local or GitHub) */
+  archivedAt?: string;
   /** User-renamed label for history / detail */
   displayName?: string;
 };
@@ -169,8 +171,10 @@ export function getRecordingSource(call: VapiCall): RecordingSource {
   ).toLowerCase();
   if (
     url.includes("/call-archive/") ||
+    Boolean(call.archivedAt) ||
     call.source === "vapi-sync" ||
     call.source === "demo-seed" ||
+    call.source === "github-archive" ||
     isDemoCall(call)
   ) {
     return "A";

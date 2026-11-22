@@ -161,7 +161,8 @@ export function archivedToVapiCall(row: ArchivedCall): VapiCall {
       Boolean(row.permanentDemo) ||
       row.source === "demo-seed" ||
       row.id.startsWith("demo-"),
-    source: row.source,
+    source: row.source || "vapi-sync",
+    archivedAt: row.archivedAt,
     displayName: row.displayName,
   };
 }
@@ -246,8 +247,8 @@ export function mergeCallsPreferArchive(
     if (!ban.has(c.id)) map.set(c.id, c);
   }
   return [...map.values()].sort((a, b) => {
-    const ta = new Date(a.createdAt || a.startedAt || 0).getTime();
-    const tb = new Date(b.createdAt || b.startedAt || 0).getTime();
+    const ta = new Date(a.startedAt || a.createdAt || 0).getTime();
+    const tb = new Date(b.startedAt || b.createdAt || 0).getTime();
     return tb - ta;
   });
 }

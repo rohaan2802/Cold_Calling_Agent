@@ -87,6 +87,12 @@ button:focus-visible,
   outline-offset: 2px;
 }
 
+html {
+  /* clip (not hidden) so overflow-y stays visible — body overflow-x:hidden
+     forces overflow-y:auto and can crop glyph descenders (g/j/y). */
+  overflow-x: clip;
+}
+
 html,
 body {
   margin: 0;
@@ -100,7 +106,10 @@ body {
     radial-gradient(900px 520px at 8% -8%, rgba(62, 207, 142, 0.16), transparent 55%),
     radial-gradient(800px 480px at 100% 0%, rgba(56, 120, 90, 0.18), transparent 50%),
     linear-gradient(180deg, #0a0f0d 0%, var(--paper) 45%, #0e1612 100%);
-  overflow-x: hidden;
+}
+
+body {
+  overflow-x: visible;
 }
 
 img,
@@ -213,25 +222,35 @@ main {
 .hero-brand {
   font-family: var(--font-display);
   font-size: clamp(2.6rem, 8vw, 5.2rem);
-  line-height: 1.08;
+  line-height: 1.15;
   margin: 0.35rem 0 0.7rem;
   letter-spacing: -0.04em;
   word-break: break-word;
   overflow: visible;
-  padding-bottom: 0.06em;
+  padding-block: 0.08em 0.12em;
 }
 
+/* Body font for long headlines — Syne’s tight metrics make g/j look cropped */
 .hero h1 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: clamp(1.45rem, 3.4vw, 2.2rem);
-  line-height: 1.4;
-  margin: 0 0 0.9rem;
-  letter-spacing: -0.02em;
-  font-weight: 600;
+  line-height: 1.7;
+  margin: 0 0 1rem;
+  letter-spacing: 0;
+  font-weight: 700;
   color: var(--ink);
-  max-width: 34ch;
+  max-width: 36ch;
   overflow: visible;
-  padding-bottom: 0.12em;
+}
+
+.hero h1 .hero-headline {
+  display: inline;
+  line-height: inherit;
+  padding: 0.15em 0 0.4em;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
 
 .hero .lede {
@@ -355,14 +374,17 @@ main {
 
 .panel-head h1,
 .panel-head h2 {
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   margin: 0.35rem 0 0.65rem;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   font-size: clamp(1.35rem, 2.5vw, 1.75rem);
+  font-weight: 700;
   word-break: break-word;
-  line-height: 1.35;
+  line-height: 1.55;
   overflow: visible;
-  padding-bottom: 0.08em;
+  padding: 0.12em 0 0.22em;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
 }
 
 .panel-head.row {
@@ -820,6 +842,16 @@ main {
   margin: 0;
 }
 
+.product-guide > h2,
+.eval-guide > h2 {
+  font-family: var(--font-body);
+  font-weight: 700;
+  letter-spacing: 0;
+  line-height: 1.55;
+  overflow: visible;
+  padding: 0.1em 0 0.2em;
+}
+
 .capability-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -837,12 +869,13 @@ main {
 
 .capability h3 {
   margin: 0 0 0.5rem;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 1.05rem;
+  font-weight: 700;
   color: var(--ink);
-  line-height: 1.35;
+  line-height: 1.45;
   overflow: visible;
-  padding-bottom: 0.06em;
+  padding-block: 0.04em 0.1em;
 }
 
 .capability p {

@@ -1,6 +1,10 @@
 import fs from "fs";
 import { NextResponse } from "next/server";
-import { findArchiveAudioFile, findArchivedCall } from "@/lib/archive";
+import { findArchiveAudioFile, findArchivedCall, readArchiveIndex } from "@/lib/archive";
+import {
+  fetchArchiveAudioFromGitHub,
+  fetchArchiveIndexFromGitHub,
+} from "@/lib/githubSync";
 import { includeLiveVapi } from "@/lib/historyMode";
 import { isDeletedCall, vapiFetch } from "@/lib/vapi";
 
@@ -68,6 +72,35 @@ export async function GET(req: Request, { params }: Params) {
         ? archived.recordingFile
         : `/call-archive/${archived.recordingFile}`;
       return NextResponse.redirect(new URL(url, req.url), 302);
+    }
+
+    // GitHub main (Action just pushed; Vercel disk may still be old)
+    try {
+      let recordingFile = archived?.recordingFile;
+      if (!recordingFile) {
+        const remote = await fetchArchiveIndexFromGitHub();
+        recordingFile = remote?.calls?.find((c) => c.id === id)?.recordingFile;
+      }
+      if (!recordingFile) {
+        const localIndex = readArchiveIndex().calls.find((c) => c.id === id);
+        recordingFile = localIndex?.recordingFile;
+      }
+      if (recordingFile) {
+        const ghAudio = await fetchArchiveAudioFromGitHub(recordingFile);
+        if (ghAudio) {
+          return new NextResponse(ghAudio.body, {
+            status: 200,
+            headers: {
+              "Content-Type": ghAudio.contentType,
+              "Content-Length": String(ghAudio.body.byteLength),
+              "Accept-Ranges": "bytes",
+              "Cache-Control": "private, max-age=3600",
+            },
+          });
+        }
+      }
+    } catch {
+      /* fall through to VAPI */
     }
 
     // Archive-only mode: do not fall back to expiring VAPI audio

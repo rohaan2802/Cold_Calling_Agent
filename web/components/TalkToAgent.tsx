@@ -221,49 +221,16 @@ export default function TalkToAgent() {
   }
 
   function amplifyAssistantAudio(player: HTMLAudioElement) {
-    // Keep native playback reliable. Re-wiring MediaElementSource mid-call
-    // often yields "transcript updates but no voice" (element can only connect once).
+    // Native volume only — MediaElementSource/Web Audio boost caused
+    // "transcript updates but Alex voice gone" mid-call freezes.
     try {
       player.muted = false;
       player.volume = 1;
+      const anyPlayer = player as HTMLAudioElement & { setSinkId?: (id: string) => Promise<void> };
       void player.play?.();
+      void anyPlayer;
     } catch {
       /* ignore */
-    }
-
-    if (boostHookedPlayerRef.current === player && boostGainRef.current) {
-      try {
-        boostGainRef.current.gain.value = LIVE_VOICE_GAIN;
-        if (boostCtxRef.current?.state === "suspended") {
-          void boostCtxRef.current.resume();
-        }
-      } catch {
-        /* ignore */
-      }
-      return;
-    }
-
-    // Only boost once per player element — never tear down while the call is live
-    if (boostHookedPlayerRef.current && boostHookedPlayerRef.current !== player) {
-      tearDownVoiceBoost();
-    }
-
-    try {
-      const AudioCtx =
-        window.AudioContext ||
-        (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      const ctx = new AudioCtx();
-      const source = ctx.createMediaElementSource(player);
-      const gain = ctx.createGain();
-      gain.gain.value = LIVE_VOICE_GAIN;
-      source.connect(gain);
-      gain.connect(ctx.destination);
-      boostCtxRef.current = ctx;
-      boostGainRef.current = gain;
-      boostHookedPlayerRef.current = player;
-      void ctx.resume();
-    } catch {
-      /* volume=1 path still works if Web Audio rejects a re-connect */
     }
   }
 

@@ -36,7 +36,11 @@ export default function HomePage() {
       <section className="hero" id="demo">
         <p className="eyebrow">AI voice sales · Production-ready demo</p>
         <p className="hero-brand">Vantora</p>
-        <h1>Alex — outbound voice agent that handles objections like a closer</h1>
+        <h1>
+          <span className="hero-headline">
+            Alex — outbound voice agent that handles objections like a closer
+          </span>
+        </h1>
         <p className="lede">
           Talk in the browser, dial real numbers, and keep every recording with transcript in a
           permanent archive. English and Urdu stay locked per call so conversations stay clean.

@@ -21,7 +21,9 @@ STYLE (HARD):
 - Listen fully; do not talk over the prospect.
 - Sound human: "Got it", "Sure", "Absolutely" ok — no long monologues.
 - If cut off mid-line, continue on the next turn — never freeze.
+- NEVER stay silent after the user speaks. Every user turn needs your spoken reply.
 - NEVER end the call only because the user paused. Keep listening. Only end on explicit hang-up, firm "no" twice, or "remove me".
+- "bye" / "bye bye" / "not a businessman" / wrong person → speak a short thanks/goodbye, then end.
 
 ${ENGLISH_LANGUAGE_LOCK_RULES}
 
@@ -134,9 +136,9 @@ const body = {
     },
   },
   stopSpeakingPlan: {
-    numWords: 5,
-    voiceSeconds: 0.4,
-    backoffSeconds: 1.8,
+    numWords: 7,
+    voiceSeconds: 0.5,
+    backoffSeconds: 2.2,
   },
   firstMessageInterruptionsEnabled: false,
 };

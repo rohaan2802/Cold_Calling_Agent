@@ -55,9 +55,10 @@ export const startSpeakingPlan = {
  * ("Assalam…" then silence). Need several real words before he stops.
  */
 export const stopSpeakingPlan = {
-  numWords: 5,
-  voiceSeconds: 0.4,
-  backoffSeconds: 1.8,
+  // Higher bar — short "yeah / sorry / again" was cutting Alex mid-sentence → freeze
+  numWords: 7,
+  voiceSeconds: 0.5,
+  backoffSeconds: 2.2,
   acknowledgementPhrases: [
     "okay",
     "ok",
@@ -158,7 +159,11 @@ export function isUserHangupRequest(text: string): boolean {
     /\bline\s*(cut|band|kat|kt)\b/.test(t) ||
     /\bphone\s*(rakh|band|cut|kat)\b/.test(t) ||
     /\bdisconnect\b/.test(t) ||
-    /\bstop\s*(the\s*)?call\b/.test(t)
+    /\bstop\s*(the\s*)?call\b/.test(t) ||
+    /\bbye\s*bye\b/.test(t) ||
+    /\b(ok\s*)?bye\b/.test(t) ||
+    /\bgood\s*bye\b/.test(t) ||
+    /\bgoodbye\b/.test(t)
   ) {
     return true;
   }

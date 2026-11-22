@@ -40,13 +40,11 @@ function matchesOutcome(call: VapiCall, filter: OutcomeFilter): boolean {
   return o === filter;
 }
 
+/** Newest call first (live or demo) — startedAt preferred over createdAt */
 function sortCalls(calls: VapiCall[]): VapiCall[] {
   return [...calls].sort((a, b) => {
-    const da = isDemoCall(a) ? 1 : 0;
-    const db = isDemoCall(b) ? 1 : 0;
-    if (da !== db) return db - da; // demos pinned on top
-    const ta = new Date(a.createdAt || a.startedAt || 0).getTime();
-    const tb = new Date(b.createdAt || b.startedAt || 0).getTime();
+    const ta = new Date(a.startedAt || a.createdAt || 0).getTime();
+    const tb = new Date(b.startedAt || b.createdAt || 0).getTime();
     return tb - ta;
   });
 }
@@ -55,6 +53,7 @@ export default function CallHistory() {
   const [calls, setCalls] = useState<VapiCall[]>([]);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [error, setError] = useState("");
   const [info, setInfo] = useState("");
@@ -120,9 +119,15 @@ export default function CallHistory() {
 
   async function load(isRefresh = false) {
     if (!isRefresh) setLoading(true);
+    else setRefreshing(true);
     setError("");
     try {
-      const res = await fetch("/api/calls", { credentials: "same-origin" });
+      // Bust browser/CDN cache — Refresh was returning a stale list
+      const res = await fetch(`/api/calls?t=${Date.now()}`, {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: { "Cache-Control": "no-cache", Pragma: "no-cache" },
+      });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(friendlyUserError(data.error || userMsg("loadCalls")));
@@ -131,22 +136,34 @@ export default function CallHistory() {
       }
       const next = Array.isArray(data) ? data : [];
       setCalls(next);
-      setPage((p) => {
-        const pages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
-        return Math.min(p, pages);
-      });
+      // Always jump to page 1 on refresh so the newest row is visible
+      if (isRefresh) setPage(1);
+      else {
+        setPage((p) => {
+          const pages = Math.max(1, Math.ceil(next.length / PAGE_SIZE));
+          return Math.min(p, pages);
+        });
+      }
       void loadArchiveMeta();
     } catch (err) {
       setError(friendlyUserError(err));
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }
 
   useEffect(() => {
-    load(false);
+    void load(false);
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     const onEnded = () => {
-      void load(true);
+      // VAPI list lags a few seconds — poll so Refresh/auto-refresh catches the new row
+      void (async () => {
+        for (const wait of [0, 2500, 6000, 12000]) {
+          if (wait) await sleep(wait);
+          await load(true);
+        }
+      })();
     };
     window.addEventListener("vantora:call-ended", onEnded);
     return () => window.removeEventListener("vantora:call-ended", onEnded);
@@ -176,20 +193,57 @@ export default function CallHistory() {
       }
       if (data.mode === "github-dispatch") {
         setInfo(
-          "Pull started on GitHub. New calls already show from VAPI; after Action + Vercel deploy they switch to permanent archive (~1–3 min)."
+          "Pull started on GitHub (~1 min). Waiting for archive so badges flip (V) → (A)…"
         );
         await load(true);
-        // Soft-poll while Action → deploy lands archive (hybrid stays on VAPI until then)
-        for (const waitMs of [20000, 40000, 60000]) {
-          await new Promise((r) => setTimeout(r, waitMs));
+        // Poll every 15s up to ~3 min — GitHub index is enough for (A); no need to wait for Vercel disk
+        let flipped = false;
+        for (let i = 0; i < 12; i++) {
+          await new Promise((r) => setTimeout(r, 15000));
           await load(true);
+          // Stop early once no live-only (V) rows remain among non-demos
+          // (load refreshes state; check via a fresh fetch)
+          try {
+            const check = await fetch(`/api/calls?t=${Date.now()}`, {
+              cache: "no-store",
+              credentials: "same-origin",
+            });
+            const list = (await check.json().catch(() => [])) as Array<{
+              id?: string;
+              demo?: boolean;
+              source?: string;
+              archivedAt?: string;
+              recordingUrl?: string;
+            }>;
+            if (Array.isArray(list)) {
+              const pendingV = list.filter((c) => {
+                if (!c?.id || String(c.id).startsWith("demo-") || c.demo) return false;
+                const url = String(c.recordingUrl || "").toLowerCase();
+                const isA =
+                  Boolean(c.archivedAt) ||
+                  c.source === "vapi-sync" ||
+                  c.source === "github-archive" ||
+                  c.source === "demo-seed" ||
+                  url.includes("/call-archive/");
+                return !isA;
+              });
+              if (pendingV.length === 0) {
+                flipped = true;
+                break;
+              }
+            }
+          } catch {
+            /* keep polling */
+          }
         }
         setInfo(
-          "Pull finished checking. If a row still plays from VAPI only, wait for the green Vercel deploy then Refresh."
+          flipped
+            ? "Archive updated — recordings now show (A). Refresh anytime to re-check."
+            : "Still waiting on GitHub/Vercel. Press Refresh in a moment — (V) becomes (A) once archive is on main."
         );
       } else {
         setInfo(
-          `Pulled latest into archive (${typeof data.total === "number" ? data.total : "ok"} call(s)). Same id now prefers archive audio.`
+          `Pulled latest into archive (${typeof data.total === "number" ? data.total : "ok"} call(s)). Badges should show (A) now.`
         );
         await load(true);
       }
@@ -274,9 +328,8 @@ export default function CallHistory() {
           <p className="eyebrow">Permanent recording archive</p>
           <h2>Call history</h2>
           <p className="lede">
-            Demo samples stay forever (even if VAPI expires). Live calls join after archive pull.
-            Only your Delete button removes a row. Recording badges:{" "}
-            <strong>(A)</strong> = permanent Archive, <strong>(V)</strong> = live VAPI (not archived yet).
+            Newest first. After Pull (~1 min) press Refresh — badges flip <strong>(V)</strong> →{" "}
+            <strong>(A)</strong> as soon as GitHub archive updates (no need to wait for full redeploy).
           </p>
           {archiveUpdatedAt && (
             <p className="hint">
@@ -305,10 +358,10 @@ export default function CallHistory() {
           <button
             type="button"
             className="ghost-btn"
-            onClick={() => load(true)}
-            disabled={loading || syncing}
+            onClick={() => void load(true)}
+            disabled={loading || refreshing || syncing}
           >
-            {loading && calls.length ? "Refreshing…" : "Refresh"}
+            {refreshing ? "Refreshing…" : "Refresh"}
           </button>
         </div>
       </div>

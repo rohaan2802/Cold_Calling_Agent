@@ -112,6 +112,120 @@ export function githubSyncConfigured(): boolean {
   return Boolean(token() && repoParts());
 }
 
+export type GitHubArchiveRow = {
+  id: string;
+  type?: string;
+  status?: string;
+  endedReason?: string;
+  startedAt?: string;
+  endedAt?: string;
+  createdAt?: string;
+  cost?: number;
+  customer?: { number?: string; name?: string };
+  assistantId?: string;
+  transcript?: string;
+  summary?: string;
+  recordingFile: string;
+  archivedAt: string;
+  source?: string;
+  demo?: boolean;
+  permanentDemo?: boolean;
+  displayName?: string;
+};
+
+/**
+ * Read call-archive/index.json from GitHub main — available as soon as the
+ * archive Action pushes, without waiting for a Vercel redeploy.
+ */
+export async function fetchArchiveIndexFromGitHub(): Promise<{
+  updatedAt: string;
+  calls: GitHubArchiveRow[];
+} | null> {
+  const parts = repoParts();
+  const t = token();
+  if (!parts || !t) return null;
+
+  try {
+    const file = await getFile(
+      parts.owner,
+      parts.repo,
+      "web/public/call-archive/index.json"
+    );
+    if (!file?.content) return null;
+    const parsed = JSON.parse(file.content) as {
+      updatedAt?: string;
+      calls?: GitHubArchiveRow[];
+    };
+    return {
+      updatedAt: String(parsed.updatedAt || ""),
+      calls: Array.isArray(parsed.calls) ? parsed.calls : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+/** Stream an archived audio blob from GitHub (private-repo safe). */
+export async function fetchArchiveAudioFromGitHub(
+  recordingFile: string
+): Promise<{ body: ArrayBuffer; contentType: string } | null> {
+  const parts = repoParts();
+  const t = token();
+  if (!parts || !t) return null;
+
+  const rel = recordingFile.replace(/^\/+/, "").replace(/^call-archive\//, "");
+  const filePath = `web/public/call-archive/${rel}`;
+  try {
+    const res = await gh(
+      `/repos/${parts.owner}/${parts.repo}/contents/${filePath}?ref=main`
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      content?: string;
+      encoding?: string;
+      download_url?: string | null;
+      size?: number;
+    };
+
+    // Prefer download_url (avoids huge base64 in API for large files)
+    if (data.download_url) {
+      const fileRes = await fetch(data.download_url, {
+        headers: { Authorization: `Bearer ${t}`, Accept: "application/octet-stream" },
+        cache: "no-store",
+      });
+      if (!fileRes.ok) return null;
+      const buf = await fileRes.arrayBuffer();
+      if (buf.byteLength < 200) return null;
+      const lower = filePath.toLowerCase();
+      const contentType = lower.endsWith(".wav")
+        ? "audio/wav"
+        : lower.endsWith(".ogg")
+          ? "audio/ogg"
+          : lower.endsWith(".webm")
+            ? "audio/webm"
+            : "audio/mpeg";
+      return { body: buf, contentType };
+    }
+
+    if (data.encoding === "base64" && data.content) {
+      const buf = Buffer.from(data.content.replace(/\n/g, ""), "base64");
+      if (buf.length < 200) return null;
+      const lower = filePath.toLowerCase();
+      const contentType = lower.endsWith(".wav")
+        ? "audio/wav"
+        : lower.endsWith(".ogg")
+          ? "audio/ogg"
+          : lower.endsWith(".webm")
+            ? "audio/webm"
+            : "audio/mpeg";
+      return { body: buf, contentType };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 /** Fire-and-forget: ask Actions to pull new VAPI recordings into call-archive and push. */
 export async function triggerArchiveWorkflow(reason = "end-of-call"): Promise<{
   ok: boolean;
