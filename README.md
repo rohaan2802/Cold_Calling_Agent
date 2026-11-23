@@ -160,7 +160,7 @@ Full write-up: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 |--------|------|---------|
 | `GET` | `/api/calls` | Hybrid history (`?hard=1` = no-cache refresh) |
 | `GET` | `/api/calls/[id]` | Metadata + transcript fields |
-| `PATCH` / `DELETE` | `/api/calls/[id]` | Rename / delete (GitHub-backed on Vercel) |
+| `PATCH/DELETE` | `/api/calls/[id]` | Rename / delete (GitHub-backed on Vercel) |
 | `GET` | `/api/calls/[id]/recording` | Audio stream |
 | `POST` | `/api/outbound` | Start outbound US call |
 | `POST` | `/api/webhook` | VAPI end-of-call → archive dispatch |

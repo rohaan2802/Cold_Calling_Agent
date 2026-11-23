@@ -186,7 +186,7 @@ Full write-up: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 |--------|------|---------|
 | `GET` | `/api/calls` | Hybrid history (`?hard=1` = no-cache refresh) |
 | `GET` | `/api/calls/[id]` | Metadata + transcript fields |
-| `PATCH` / `DELETE` | `/api/calls/[id]` | Rename / delete (GitHub-backed on Vercel) |
+| `PATCH/DELETE` | `/api/calls/[id]` | Rename / delete (GitHub-backed on Vercel) |
 | `GET` | `/api/calls/[id]/recording` | Audio stream |
 | `POST` | `/api/outbound` | Start outbound US call |
 | `POST` | `/api/webhook` | VAPI end-of-call → archive dispatch |
@@ -405,7 +405,7 @@ def index_html() -> str:
 <meta name="twitter:card" content="summary_large_image">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <script>(function(){{try{{var t=localStorage.getItem('vantora-theme');var q=new URLSearchParams(location.search).get('theme');if(q==='dark'||q==='light')t=q;if(!t)t='dark';document.documentElement.setAttribute('data-theme',t);}}catch(e){{document.documentElement.setAttribute('data-theme','dark');}}}})();</script>
-<link rel="stylesheet" href="assets/css/style.css">
+<link rel="stylesheet" href="assets/css/style.css?v=nowrap2">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -583,7 +583,7 @@ def index_html() -> str:
 <tbody>
 <tr><td>GET</td><td><code>/api/calls</code></td><td>Hybrid history (<code>hard=1</code> no-cache)</td></tr>
 <tr><td>GET</td><td><code>/api/calls/[id]</code></td><td>Metadata + transcript</td></tr>
-<tr><td>PATCH / DELETE</td><td><code>/api/calls/[id]</code></td><td>Rename / delete</td></tr>
+<tr><td class="cell-nowrap">PATCH/DELETE</td><td><code>/api/calls/[id]</code></td><td>Rename / delete</td></tr>
 <tr><td>GET</td><td><code>/api/calls/[id]/recording</code></td><td>Audio stream</td></tr>
 <tr><td>POST</td><td><code>/api/outbound</code></td><td>Start US outbound call</td></tr>
 <tr><td>POST</td><td><code>/api/webhook</code></td><td>End-of-call archive dispatch</td></tr>
