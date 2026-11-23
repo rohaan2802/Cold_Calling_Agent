@@ -1,0 +1,172 @@
+{
+  "figures": [
+    {
+      "id": 1,
+      "file": "01_repo_folder_structure.png",
+      "title": "Repository folder structure",
+      "caption": "Top-level map of web/, scripts/, docs/, prompts/, and CI.",
+      "category": "overview"
+    },
+    {
+      "id": 2,
+      "file": "02_voice_pipeline_architecture.png",
+      "title": "Voice pipeline architecture",
+      "caption": "Browser/phone through VAPI, Deepgram, Groq, and Elliot TTS.",
+      "category": "architecture"
+    },
+    {
+      "id": 3,
+      "file": "03_call_agent_english_ui_mock.png",
+      "title": "Call Agent \u2014 English UI",
+      "caption": "Browser voice UI mock with language lock and notes from TalkToAgent.",
+      "category": "product"
+    },
+    {
+      "id": 4,
+      "file": "04_call_agent_urdu_language_lock.png",
+      "title": "Call Agent \u2014 Urdu language lock",
+      "caption": "Roman Urdu rules and TTS constraints for Elliot.",
+      "category": "product"
+    },
+    {
+      "id": 5,
+      "file": "05_outbound_dialer_flow.png",
+      "title": "Outbound dialer flow",
+      "caption": "Steps from phone input through POST /api/outbound to VAPI call.",
+      "category": "product"
+    },
+    {
+      "id": 6,
+      "file": "06_call_history_av_badges.png",
+      "title": "Call History (A)/(V) badges",
+      "caption": "Hybrid live VAPI vs permanent archive badge semantics.",
+      "category": "product"
+    },
+    {
+      "id": 7,
+      "file": "07_permanent_archive_pipeline.png",
+      "title": "Permanent archive pipeline",
+      "caption": "Webhook \u2192 GitHub Action \u2192 push \u2192 Vercel redeploy.",
+      "category": "ops"
+    },
+    {
+      "id": 8,
+      "file": "08_recording_player_transcript.png",
+      "title": "Recording player & transcript",
+      "caption": "Playback chrome with transcript excerpt from archive.",
+      "category": "product"
+    },
+    {
+      "id": 9,
+      "file": "09_english_system_prompt_excerpt.png",
+      "title": "englishSystemPrompt excerpt",
+      "caption": "First lines of English Alex system prompt from repo.",
+      "category": "code"
+    },
+    {
+      "id": 10,
+      "file": "10_urdu_system_prompt_excerpt.png",
+      "title": "urduSystemPrompt excerpt",
+      "caption": "Urdu prompt rules: Roman Urdu and never-silent.",
+      "category": "code"
+    },
+    {
+      "id": 11,
+      "file": "11_speech_config_turn_taking.png",
+      "title": "speechConfig turn-taking",
+      "caption": "LiveKit endpointing (EN) vs Urdu transcription plan.",
+      "category": "code"
+    },
+    {
+      "id": 12,
+      "file": "12_talk_to_agent_build_overrides.png",
+      "title": "TalkToAgent buildOverrides",
+      "caption": "Per-language Groq model and Elliot voice overrides.",
+      "category": "code"
+    },
+    {
+      "id": 13,
+      "file": "13_outbound_api_route_snippet.png",
+      "title": "Outbound API route",
+      "caption": "Server route that starts VAPI phone calls.",
+      "category": "code"
+    },
+    {
+      "id": 14,
+      "file": "14_webhook_end_of_call_archive.png",
+      "title": "Webhook end-of-call archive",
+      "caption": "end-of-call-report handler and GitHub dispatch.",
+      "category": "code"
+    },
+    {
+      "id": 15,
+      "file": "15_github_sync_rename_delete_vercel.png",
+      "title": "githubSync on read-only Vercel",
+      "caption": "Rename/delete via GitHub when Vercel FS cannot write.",
+      "category": "ops"
+    },
+    {
+      "id": 16,
+      "file": "16_nextjs_app_router_map.png",
+      "title": "Next.js App Router map",
+      "caption": "app/, components/, and lib/ responsibilities.",
+      "category": "architecture"
+    },
+    {
+      "id": 17,
+      "file": "17_env_vars_public_vs_secret.png",
+      "title": "Environment variables",
+      "caption": "Public NEXT_PUBLIC_* vs server secrets (.env.example).",
+      "category": "ops"
+    },
+    {
+      "id": 18,
+      "file": "18_demo_call_archive_seed_overview.png",
+      "title": "Demo archive seed overview",
+      "caption": "call-archive index and demo-wav seed files.",
+      "category": "ops"
+    },
+    {
+      "id": 19,
+      "file": "19_mobile_call_history_badges_row.png",
+      "title": "Mobile Call History badges",
+      "caption": "Responsive badge row and source styling.",
+      "category": "product"
+    },
+    {
+      "id": 20,
+      "file": "20_refresh_hard_fetch_no_blink.png",
+      "title": "Hard refresh (no blink)",
+      "caption": "CallHistory hard fetch without blanking the list.",
+      "category": "code"
+    },
+    {
+      "id": 21,
+      "file": "21_setup_npm_run_vercel.png",
+      "title": "Local setup & Vercel",
+      "caption": "npm install, RUN.cmd, and deployment steps.",
+      "category": "ops"
+    },
+    {
+      "id": 22,
+      "file": "22_testing_checklist_en_ur_outbound.png",
+      "title": "Testing checklist",
+      "caption": "EN/UR verified items and outbound limit note.",
+      "category": "ops"
+    },
+    {
+      "id": 23,
+      "file": "23_limitations_credits_elliot_urdu.png",
+      "title": "Known limitations",
+      "caption": "Credits, outbound caps, and Elliot Urdu TTS.",
+      "category": "results"
+    },
+    {
+      "id": 24,
+      "file": "24_results_summary_recruiter.png",
+      "title": "Results summary",
+      "caption": "Shipped features and live links for recruiters.",
+      "category": "results"
+    }
+  ]
+}

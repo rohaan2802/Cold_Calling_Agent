@@ -40,3 +40,4 @@ tsbuildinfo
 *.tsbuildinfo
 .vercel
 .env*
+!.env.example

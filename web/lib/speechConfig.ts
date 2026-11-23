@@ -1,6 +1,11 @@
 /**
- * Shared STT / turn-taking — snappy replies, natural barge-in, no mid-call freeze.
- * Deepgram default endpointing (10ms) misses short / quiet utterances — use ~250.
+ * Shared STT / turn-taking for Vantora · Alex (Call Agent + outbound).
+ *
+ * Goals: snappy replies, natural barge-in, no mid-call freeze.
+ * Deepgram default endpointing (~10ms) misses short / quiet utterances — EN uses ~250ms;
+ * Urdu uses a softer transcription plan so Roman-Urdu TTS does not stall.
+ *
+ * Recruiter map: docs/ARCHITECTURE.md · demos: TalkToAgent buildOverrides(lang).
  */
 
 /** Natural pace on Elliot V2 — not rushed, not slow */
