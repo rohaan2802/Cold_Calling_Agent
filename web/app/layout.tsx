@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import VapiNoiseGuard from "@/components/VapiNoiseGuard";
+import BackToTop from "@/components/BackToTop";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             Vantora · AI outbound voice · Permanent archive · Demo Samples · EN / Urdu
           </footer>
         </div>
+        <BackToTop />
       </body>
     </html>
   );
